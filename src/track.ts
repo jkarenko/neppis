@@ -34,6 +34,13 @@ export const TRACKS: TrackDef[] = [
   },
 ];
 
+export interface GeoData {
+  positions: Float32Array;
+  indices: Uint32Array;
+  uvs?: Float32Array;
+  colors?: Float32Array;
+}
+
 export interface TrackQuery {
   /** Nearest centreline sample index. */
   index: number;
@@ -51,9 +58,8 @@ const ON_TRACK_MARGIN = 0.15;
 const FLOOR_DEPTH = 0.08;
 const RIDGE_HEIGHT = 0.12;
 const RIDGE_HALF = 0.3;
-/** The ribbon reaches this far beyond the ridge, as a band of foot-smoothed sand hiding the seam. */
+/** The track texture reaches this far beyond the ridge, as a band of foot-smoothed sand. */
 const RIBBON_EXTRA = 0.45;
-const RIBBON_LIFT = 0.02;
 
 function hash2(x: number, y: number): number {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -263,6 +269,10 @@ export class Track {
     return -this.sizeZ / 2 + (i / this.nrows) * this.sizeZ;
   }
 
+  /**
+   * Physics is the height grid. The visuals below are built from that grid's own triangles,
+   * split on the same diagonal Rapier uses, so whatever is drawn is exactly what a car rolls on.
+   */
   createCollider(world: RAPIER.World): RAPIER.Collider {
     const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
     const desc = RAPIER.ColliderDesc.heightfield(
@@ -277,41 +287,48 @@ export class Track {
     return world.createCollider(desc, body);
   }
 
-  /** Visual meshes: flat-shaded terrain, a smooth track ribbon and a crisp finish line. */
+  /** Visual meshes. Browser only (textures). */
   createMesh(): THREE.Group {
     const group = new THREE.Group();
     group.add(this.createTerrainMesh());
     group.add(this.createRibbonMesh());
-    group.add(this.createFinishLine());
     this.mesh = group;
     return group;
   }
 
-  /** Lateral offsets of the ribbon's vertex rows, ridge and smoothed band included. */
-  ribbonOffsets(): number[] {
-    const hw = this.halfWidth;
-    const outer = hw + RIDGE_HALF * 1.5;
-    const far = outer + RIBBON_EXTRA;
-    const half = [0, hw / 2, hw, hw + 0.15, hw + 0.3, outer, outer + 0.15, outer + 0.3, far];
-    return [...half.slice(1).reverse().map((d) => -d), ...half];
-  }
-
+  /** How far from the centreline the track texture reaches: ridge plus a band of smoothed sand. */
   get ribbonOuter(): number {
     return this.halfWidth + RIDGE_HALF * 1.5 + RIBBON_EXTRA;
   }
 
-  private createTerrainMesh(): THREE.Mesh {
+  private terrainCache: GeoData | null = null;
+  private ribbonCache: GeoData | null = null;
+
+  terrainGeo(): GeoData {
+    if (!this.terrainCache) this.buildSurfaces();
+    return this.terrainCache!;
+  }
+
+  ribbonGeo(): GeoData {
+    if (!this.ribbonCache) this.buildSurfaces();
+    return this.ribbonCache!;
+  }
+
+  /**
+   * Partition the grid's triangles: those near the track become the textured ribbon (unindexed,
+   * with lap-position UVs), the rest the vertex-coloured loose sand. Every triangle goes to
+   * exactly one mesh, so there is no overlap and no seam to hide.
+   */
+  private buildSurfaces(): void {
     const { nrows, ncols } = this;
     const vertCount = (nrows + 1) * (ncols + 1);
     const positions = new Float32Array(vertCount * 3);
     const colors = new Float32Array(vertCount * 3);
-    const lateral = new Float32Array(vertCount);
-    const outer = this.halfWidth + RIDGE_HALF * 1.5;
-    // Terrain quads touching this band are not rendered: the ribbon covers them.
-    const cut = outer + RIBBON_EXTRA - 0.25;
+    const tArr = new Float32Array(vertCount);
+    const dArr = new Float32Array(vertCount);
+    const outer = this.ribbonOuter;
     const sand = new THREE.Color(0xdcc7a0);
     const sandDark = new THREE.Color(0xc4ad82);
-    const floor = new THREE.Color(0x9d8562);
     const c = new THREE.Color();
     for (let j = 0; j <= ncols; j++) {
       const x = this.vertexX(j);
@@ -322,55 +339,74 @@ export class Track {
         positions[v * 3 + 1] = this.heights[v];
         positions[v * 3 + 2] = z;
         const q = this.query(x, z);
-        lateral[v] = Math.abs(q.d);
-        if (Math.abs(q.d) < outer) {
-          c.copy(floor);
-        } else {
-          // Coarse patches of lighter and darker sand with crisp edges.
-          const level = Math.floor(noise2(x * 0.45, z * 0.45) * 4) / 3;
-          c.copy(sand).lerp(sandDark, level);
-        }
+        tArr[v] = q.t;
+        dArr[v] = q.d;
+        // Coarse patches of lighter and darker sand with crisp edges.
+        const level = Math.floor(noise2(x * 0.45, z * 0.45) * 4) / 3;
+        c.copy(sand).lerp(sandDark, level);
         colors[v * 3] = c.r;
         colors[v * 3 + 1] = c.g;
         colors[v * 3 + 2] = c.b;
       }
     }
-    const indices: number[] = [];
+    const terrainIdx: number[] = [];
+    const ribPos: number[] = [];
+    const ribUv: number[] = [];
+    const tri = (a: number, b: number, cc: number) => {
+      const dd = (Math.abs(dArr[a]) + Math.abs(dArr[b]) + Math.abs(dArr[cc])) / 3;
+      if (dd >= outer) {
+        terrainIdx.push(a, b, cc);
+        return;
+      }
+      // Unwrap the lap coordinate across the start line so the seam does not smear.
+      const ts = [tArr[a], tArr[b], tArr[cc]];
+      const wrap = Math.max(...ts) - Math.min(...ts) > 0.5;
+      for (const [v, t] of [[a, ts[0]], [b, ts[1]], [cc, ts[2]]] as [number, number][]) {
+        ribPos.push(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]);
+        ribUv.push(wrap && t < 0.5 ? t + 1 : t, Math.max(0, Math.min(1, (dArr[v] + outer) / (2 * outer))));
+      }
+    };
     for (let j = 0; j < ncols; j++) {
       for (let i = 0; i < nrows; i++) {
-        const a = j * (nrows + 1) + i;
-        const b = a + 1;
-        const cIdx = a + (nrows + 1);
-        const d = cIdx + 1;
-        if (lateral[a] < cut || lateral[b] < cut || lateral[cIdx] < cut || lateral[d] < cut) continue;
-        indices.push(a, b, cIdx, b, d, cIdx);
+        const a = j * (nrows + 1) + i; // (col j, row i)
+        const b = a + 1; // (col j, row i+1)
+        const cIdx = a + (nrows + 1); // (col j+1, row i)
+        const d = cIdx + 1; // (col j+1, row i+1)
+        // Same split as Rapier's heightfield: diagonal from b to c.
+        tri(a, b, cIdx);
+        tri(b, d, cIdx);
       }
     }
+    this.terrainCache = { positions, indices: new Uint32Array(terrainIdx), colors };
+    this.ribbonCache = { positions: new Float32Array(ribPos), indices: new Uint32Array(0), uvs: new Float32Array(ribUv) };
+  }
+
+  private createTerrainMesh(): THREE.Mesh {
+    const g = this.terrainGeo();
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+    geo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(g.colors!, 3));
+    geo.setIndex(new THREE.BufferAttribute(g.indices, 1));
     geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.95,
-      metalness: 0,
-      flatShading: true,
-    });
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
     return mesh;
   }
 
-  /** Tiny pixel texture across the track: ridge, damp floor, ridge. Nearest filtering keeps it crisp. */
+  /**
+   * One pixel texture for the whole lap, never repeated, so anything painted on the track
+   * (the finish line, later tyre marks or grid slots) is simply part of the track's texture.
+   * 24 rows across: smoothed sand, ridge, damp floor, ridge, smoothed sand. Nearest filtering keeps it crisp.
+   */
   private createRibbonTexture(): THREE.CanvasTexture {
-    const w = 48;
     const h = 24;
+    const pixel = (2 * this.ribbonOuter) / h;
+    const w = Math.max(8, Math.round(this.length / pixel));
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d')!;
-    // Rows across the ribbon: 3 smoothed sand, 3 ridge, 12 damp floor, 3 ridge, 3 smoothed sand.
     const sand = ['#dcc7a0', '#d4be96', '#e2cfaa'];
     const ridge = ['#e9d9b3', '#f1e3c0', '#e2d0a8'];
     const floor = ['#9d8562', '#a68d69', '#95805e'];
@@ -384,6 +420,15 @@ export class Track {
         ctx.fillRect(x, y, 1, 1);
       }
     }
+    // Finish line: 2 x 2 pixel checker squares across the damp floor, straddling u = 0.
+    for (let y = 6; y < h - 6; y++) {
+      for (let dx = -2; dx < 2; dx++) {
+        const x = (dx + w) % w;
+        const square = Math.floor((y - 6) / 2) + Math.floor((dx + 2) / 2);
+        ctx.fillStyle = square % 2 === 0 ? '#f6f1e4' : '#2b2a28';
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
     const tex = new THREE.CanvasTexture(canvas);
     tex.magFilter = THREE.NearestFilter;
     tex.minFilter = THREE.NearestFilter;
@@ -394,96 +439,13 @@ export class Track {
   }
 
   private createRibbonMesh(): THREE.Mesh {
-    const outer = this.ribbonOuter;
-    const offsets = this.ribbonOffsets();
-    const stride = 2; // one ring every 0.2 units
-    const rings = Math.floor(this.samples.length / stride);
-    const rows = offsets.length;
-    const positions = new Float32Array(rings * rows * 3);
-    const uvs = new Float32Array(rings * rows * 2);
-    const texRepeat = outer * 2 * 3; // square pixels: the 48 x 24 texture spans the ribbon width
-    for (let r = 0; r < rings; r++) {
-      const idx = r * stride;
-      const p = this.samples[idx];
-      const tg = this.tangents[idx];
-      const rx = -tg.z;
-      const rz = tg.x;
-      for (let k = 0; k < rows; k++) {
-        const d = offsets[k];
-        const x = p.x + rx * d;
-        const z = p.z + rz * d;
-        const v = r * rows + k;
-        positions[v * 3] = x;
-        positions[v * 3 + 1] = this.heightAt(x, z) + RIBBON_LIFT;
-        positions[v * 3 + 2] = z;
-        uvs[v * 2] = (idx * SAMPLE_STEP) / texRepeat;
-        uvs[v * 2 + 1] = (d + outer) / (2 * outer);
-      }
-    }
-    const indices = new Uint32Array(rings * (rows - 1) * 6);
-    let n = 0;
-    for (let r = 0; r < rings; r++) {
-      const r2 = (r + 1) % rings;
-      for (let k = 0; k < rows - 1; k++) {
-        const a = r * rows + k;
-        const b = a + 1;
-        const c = r2 * rows + k;
-        const d = c + 1;
-        // Wound so the normal points up: rows run to the right, rings along the track.
-        indices[n++] = a;
-        indices[n++] = b;
-        indices[n++] = c;
-        indices[n++] = b;
-        indices[n++] = d;
-        indices[n++] = c;
-      }
-    }
+    const g = this.ribbonGeo();
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    geo.setIndex(new THREE.BufferAttribute(indices, 1));
+    geo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(g.uvs!, 2));
     geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({
-      map: this.createRibbonTexture(),
-      roughness: 0.95,
-      metalness: 0,
-      flatShading: true,
-    });
+    const mat = new THREE.MeshStandardMaterial({ map: this.createRibbonTexture(), roughness: 0.95, metalness: 0 });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.receiveShadow = true;
-    return mesh;
-  }
-
-  private createFinishLine(): THREE.Mesh {
-    // Squares across the track (cols) and along it (rowsN). The quad's u axis runs along the
-    // track and v across it, so the canvas is rowsN wide and cols tall.
-    const cols = 6;
-    const rowsN = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = rowsN;
-    canvas.height = cols;
-    const ctx = canvas.getContext('2d')!;
-    for (let y = 0; y < cols; y++) {
-      for (let x = 0; x < rowsN; x++) {
-        ctx.fillStyle = (x + y) % 2 === 0 ? '#f6f1e4' : '#2b2a28';
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.magFilter = THREE.NearestFilter;
-    tex.minFilter = THREE.NearestFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const square = this.def.width / cols;
-    const geo = new THREE.PlaneGeometry(square * rowsN, this.def.width);
-    geo.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-    );
-    const p = this.samples[0];
-    const tg = this.tangents[0];
-    mesh.position.set(p.x, this.heightAt(p.x, p.z) + RIBBON_LIFT + 0.01, p.z);
-    mesh.rotation.y = Math.atan2(-tg.z, tg.x);
     mesh.receiveShadow = true;
     return mesh;
   }

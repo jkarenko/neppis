@@ -29,9 +29,9 @@ async function main() {
   track.createCollider(world);
   world.step();
 
-  // Heightfield orientation check: raycast onto a few points and compare with the analytic height.
+  // Collision surface check: raycast onto a few points and compare with the analytic height.
   let maxErr = 0;
-  for (const [x, z] of [[0, -8.5], [10, -8.5], [0, -7.2], [-20, 0], [15, 3], [0, 9.5]]) {
+  for (const [x, z] of [[0.03, -8.53], [10.03, -8.53], [0.03, -7.23], [-20.03, 0.03], [15.03, 3.03], [0.03, 9.53]]) {
     const ray = new RAPIER.Ray({ x, y: 5, z }, { x: 0, y: -1, z: 0 });
     const hit = world.castRay(ray, 20, true);
     const y = hit ? 5 - hit.timeOfImpact : NaN;
@@ -39,7 +39,7 @@ async function main() {
     maxErr = Math.max(maxErr, err);
     console.log(`height at (${x}, ${z}): rapier=${y.toFixed(3)} analytic=${track.heightAt(x, z).toFixed(3)}`);
   }
-  console.log(`max heightfield error: ${maxErr.toFixed(4)} ${maxErr < 0.03 ? 'OK' : 'MISMATCH'}`);
+  console.log(`max surface error: ${maxErr.toFixed(4)} ${maxErr < 0.03 ? 'OK' : 'MISMATCH'}`);
 
   const slot = track.startSlots(1)[0];
   const car = new Car(world, 0xff0000, slot.x, slot.z, track.heightAt(slot.x, slot.z), slot.yaw);

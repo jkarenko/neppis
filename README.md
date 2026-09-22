@@ -37,6 +37,11 @@ pnpm simrace    # headless: three AI drivers race one lap, exercises the rules e
 - The track is a heightfield generated from a closed Catmull-Rom spline: a sunken strip with
   ridges of pushed-up sand along the edges, plus a jump and a dip. `FIX_INTERNAL_EDGES` on
   the heightfield collider matters: without it the wheel contacts snag on triangle edges.
+- What you see is what you drive on. Both the loose sand and the track are drawn from the
+  heightfield's own triangles, split on the same diagonal Rapier uses. Triangles near the
+  centreline form the track mesh, textured by lap position and lateral distance with a single
+  nearest-filtered pixel strip for the whole lap; the finish line is painted into that strip,
+  so it follows the geometry like any other part of the track.
 - The car is five rigid bodies: a chassis and four cylinder tyres (rounded rims) on revolute joints. Rolling,
   skidding, grip and tipping all come out of contact forces. The only non-contact force is the
   rolling resistance of damp sand, modelled as a constant torque on each axle (a capped joint
