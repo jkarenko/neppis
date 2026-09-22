@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { TRACK_DETAIL } from './config.ts';
 
 export interface TrackFeature {
   /** Position along the lap, 0..1. */
@@ -51,16 +52,33 @@ export interface TrackQuery {
   onTrack: boolean;
 }
 
-/** Grid cell, 12.5 mm. Halving it quadruples the triangle count (1.1 M) and tanks the framerate. */
-const CELL = 0.125;
+/** A regular height grid: the shape Rapier's heightfield collider and our meshes share. */
+interface Grid {
+  cell: number;
+  ncols: number;
+  nrows: number;
+  /** Grid centre in world space. */
+  cx: number;
+  cz: number;
+  /** Column-major heights, (ncols+1) x (nrows+1), as Rapier expects. */
+  heights: Float32Array;
+}
+
+/** Centreline samples are this far apart; also the ribbon's ring spacing. */
 const SAMPLE_STEP = 0.1;
+/** Physics and visual grid for the loose sand outside: 5 cm, low-poly on purpose. */
+const CELL_COARSE = 0.5;
 /** Cars whose centre is within this margin outside the strip still count as on the track. */
 const ON_TRACK_MARGIN = 0.15;
 const FLOOR_DEPTH = 0.08;
 const RIDGE_HEIGHT = 0.12;
 const RIDGE_HALF = 0.3;
-/** The track texture reaches this far beyond the ridge, as a band of foot-smoothed sand. */
+/** The ribbon reaches this far beyond the ridge, as a band of foot-smoothed sand. */
 const RIBBON_EXTRA = 0.45;
+/** The coarse mesh is drawn this far in under the ribbon's outer band, so the seam is hidden. */
+const OVERLAP = 0.3;
+/** Whichever surface is hidden under the other is sunk at least this far, so it is never touched. */
+const SINK = 0.03;
 
 function hash2(x: number, y: number): number {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -84,6 +102,24 @@ function noise2(x: number, y: number): number {
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 }
 
+/** Height of a grid's triangulated surface at a point, split on the same diagonal Rapier uses. */
+function gridHeightAt(g: Grid, x: number, z: number): number {
+  const fj = (x - g.cx) / g.cell + g.ncols / 2;
+  const fi = (z - g.cz) / g.cell + g.nrows / 2;
+  const j = Math.max(0, Math.min(g.ncols - 1, Math.floor(fj)));
+  const i = Math.max(0, Math.min(g.nrows - 1, Math.floor(fi)));
+  const u = Math.max(0, Math.min(1, fj - j));
+  const v = Math.max(0, Math.min(1, fi - i));
+  const h = (jj: number, ii: number) => g.heights[jj * (g.nrows + 1) + ii];
+  const a = h(j, i);
+  const b = h(j, i + 1);
+  const c = h(j + 1, i);
+  const d = h(j + 1, i + 1);
+  // Triangles (a, b, c) and (b, d, c): the diagonal runs from b to c.
+  if (u + v <= 1) return a + (c - a) * u + (b - a) * v;
+  return d + (b - d) * (1 - u) + (c - d) * (1 - v);
+}
+
 export class Track {
   readonly def: TrackDef;
   readonly curve: THREE.CatmullRomCurve3;
@@ -93,12 +129,18 @@ export class Track {
   readonly n: number;
   readonly sizeX: number;
   readonly sizeZ: number;
-  readonly nrows: number;
-  readonly ncols: number;
-  readonly heights: Float32Array;
   mesh: THREE.Group | null = null;
 
-  private readonly coarseStep: number;
+  /** Lateral offsets of the ribbon's vertex rows, ridge and smoothed band included. */
+  readonly rows: number[];
+  /** Ribbon vertex heights, [ring * rows + row]. Every vertex is the analytic height. */
+  readonly ribbonHeights: Float32Array;
+  readonly coarse: Grid;
+  readonly fine: Grid;
+
+  private readonly coarseStep = 12;
+  private coarseGeoCache: GeoData | null = null;
+  private ribbonGeoCache: GeoData | null = null;
 
   constructor(def: TrackDef) {
     this.def = def;
@@ -117,17 +159,28 @@ export class Track {
       const next = pts[(i + 1) % pts.length];
       return next.clone().sub(prev).setY(0).normalize();
     });
-    this.coarseStep = 12;
-
     this.sizeX = def.area[0];
     this.sizeZ = def.area[1];
-    this.ncols = Math.round(this.sizeX / CELL);
-    this.nrows = Math.round(this.sizeZ / CELL);
-    this.heights = this.buildHeights();
+
+    const hw = this.halfWidth;
+    const outer = this.ribbonOuter;
+    // Floor rows every 12.5 mm so the millimetre roughness is resolved across as well as along.
+    const half: number[] = [];
+    for (let d = 0; d < hw - 1e-6; d += 0.125) half.push(d);
+    half.push(hw, hw + 0.15, hw + 0.3, hw + 0.45, outer - 0.3, outer - 0.15, outer);
+    this.rows = [...half.slice(1).reverse().map((d) => -d), ...half];
+    this.coarse = this.buildCoarse();
+    this.ribbonHeights = this.buildRibbonHeights();
+    this.fine = this.buildFine();
   }
 
   get halfWidth(): number {
     return this.def.width / 2;
+  }
+
+  /** How far from the centreline the ribbon reaches: ridge plus a band of smoothed sand. */
+  get ribbonOuter(): number {
+    return this.halfWidth + RIDGE_HALF * 1.5 + RIBBON_EXTRA;
   }
 
   /** Index of the nearest centreline sample (coarse pass, then local refinement). */
@@ -200,10 +253,17 @@ export class Track {
     return this.wrapIndex(index + distance / SAMPLE_STEP);
   }
 
-  /** Analytic terrain height at a point. */
+  /** Analytic terrain height at a point: the design the meshes are built from. */
   heightAt(x: number, z: number): number {
     const q = this.query(x, z);
     return this.profile(q, x, z);
+  }
+
+  /** Height of the physics surface at a point, i.e. what a wheel would rest on. */
+  surfaceHeightAt(x: number, z: number): number {
+    const r = this.ribbonHeightAt(x, z);
+    const c = gridHeightAt(this.coarse, x, z);
+    return r === null ? c : Math.max(r, c);
   }
 
   private profile(q: TrackQuery, x: number, z: number): number {
@@ -222,13 +282,11 @@ export class Track {
     } else {
       h = 0;
     }
-    // Loose sand outside the track is rough.
-    const rough = 0.035 * (noise2(x * 2.1, z * 2.1) - 0.5) + 0.015 * (noise2(x * 7, z * 7) - 0.5);
+    // Loose sand outside the track undulates gently. Wavelengths stay well above the coarse cell.
+    const rough = 0.05 * (noise2(x * 0.6, z * 0.6) - 0.5) + 0.02 * (noise2(x * 0.9 + 5, z * 0.9 + 9) - 0.5);
     const outsideMix = smooth(Math.max(0, Math.min(1, (ad - hw) / RIDGE_HALF)));
     h += rough * outsideMix;
-    // Damp, foot-smoothed sand still has millimetre texture and the odd grain.
-    // Wavelengths of 4 and 3 cells so the bumps are rolling, not spiky. No single-cell grains:
-    // a rigid grain launches a rigid wheel, whereas real sand grains crush and roll aside.
+    // Damp, foot-smoothed sand still has millimetre texture: rolling bumps, no rigid grains.
     const fine = 0.006 * (noise2(x * 2 + 11, z * 2 + 5) - 0.5) + 0.004 * (noise2(x * 2.7 + 3, z * 2.7 + 17) - 0.5);
     h += fine * (1 - outsideMix);
     // Features (jumps, dips) across the track, fading out over the ridge.
@@ -254,107 +312,190 @@ export class Track {
     return h;
   }
 
-  /** Lap position and lateral distance of every grid vertex, filled by buildHeights. */
-  private vertT!: Float32Array;
-  private vertD!: Float32Array;
+  // ---- Ribbon: the track as a strip of quads along the centreline ------------------------
 
-  private buildHeights(): Float32Array {
-    const { nrows, ncols } = this;
-    const count = (nrows + 1) * (ncols + 1);
-    const heights = new Float32Array(count);
-    this.vertT = new Float32Array(count);
-    this.vertD = new Float32Array(count);
-    for (let j = 0; j <= ncols; j++) {
-      const x = -this.sizeX / 2 + (j / ncols) * this.sizeX;
-      for (let i = 0; i <= nrows; i++) {
-        const z = -this.sizeZ / 2 + (i / nrows) * this.sizeZ;
-        const v = j * (nrows + 1) + i;
-        const q = this.query(x, z);
-        heights[v] = this.profile(q, x, z);
-        this.vertT[v] = q.t;
-        this.vertD[v] = q.d;
+  private ribbonVertex(ring: number, row: number): { x: number; z: number } {
+    const p = this.samples[ring];
+    const tg = this.tangents[ring];
+    const d = this.rows[row];
+    return { x: p.x + -tg.z * d, z: p.z + tg.x * d };
+  }
+
+  private buildRibbonHeights(): Float32Array {
+    const rings = this.samples.length;
+    const rows = this.rows.length;
+    const heights = new Float32Array(rings * rows);
+    for (let r = 0; r < rings; r++) {
+      for (let k = 0; k < rows; k++) {
+        const v = this.ribbonVertex(r, k);
+        // The outermost rows lie exactly on the coarse sand surface, so the seam is watertight.
+        const edge = k === 0 || k === rows - 1;
+        heights[r * rows + k] = edge ? gridHeightAt(this.coarse, v.x, v.z) : this.heightAt(v.x, v.z);
       }
     }
     return heights;
   }
 
-  vertexX(j: number): number {
-    return -this.sizeX / 2 + (j / this.ncols) * this.sizeX;
-  }
-
-  vertexZ(i: number): number {
-    return -this.sizeZ / 2 + (i / this.nrows) * this.sizeZ;
-  }
-
   /**
-   * Physics is the height grid. The visuals below are built from that grid's own triangles,
-   * split on the same diagonal Rapier uses, so whatever is drawn is exactly what a car rolls on.
+   * Height of the ribbon's triangulated surface at a point, or null outside the ribbon.
+   * Uses the same triangle split as the ribbon mesh, so the physics grid built from this is
+   * the drawn surface itself, resampled.
    */
-  createCollider(world: RAPIER.World): RAPIER.Collider {
-    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-    const desc = RAPIER.ColliderDesc.heightfield(
-      this.nrows,
-      this.ncols,
-      this.heights,
-      { x: this.sizeX, y: 1, z: this.sizeZ },
-      RAPIER.HeightFieldFlags.FIX_INTERNAL_EDGES,
-    )
-      .setFriction(0.8)
-      .setRestitution(0.05);
-    return world.createCollider(desc, body);
-  }
-
-  /** Visual meshes. Browser only (textures). */
-  createMesh(): THREE.Group {
-    const group = new THREE.Group();
-    group.add(this.createTerrainMesh());
-    group.add(this.createRibbonMesh());
-    this.mesh = group;
-    return group;
-  }
-
-  /** How far from the centreline the track texture reaches: ridge plus a band of smoothed sand. */
-  get ribbonOuter(): number {
-    return this.halfWidth + RIDGE_HALF * 1.5 + RIBBON_EXTRA;
-  }
-
-  private terrainCache: GeoData | null = null;
-  private ribbonCache: GeoData | null = null;
-
-  terrainGeo(): GeoData {
-    if (!this.terrainCache) this.buildSurfaces();
-    return this.terrainCache!;
+  ribbonHeightAt(x: number, z: number): number | null {
+    const q = this.query(x, z);
+    const outer = this.ribbonOuter;
+    if (Math.abs(q.d) >= outer) return null;
+    const rings = this.samples.length;
+    const rows = this.rows.length;
+    const p = this.samples[q.index];
+    const tg = this.tangents[q.index];
+    // Continuous ring coordinate: nearest sample plus the projection along its tangent.
+    const along = ((x - p.x) * tg.x + (z - p.z) * tg.z) / SAMPLE_STEP;
+    let r0 = q.index + Math.floor(along);
+    const fs = along - Math.floor(along);
+    r0 = ((r0 % rings) + rings) % rings;
+    const r1 = (r0 + 1) % rings;
+    let k = 0;
+    while (k < rows - 2 && this.rows[k + 1] <= q.d) k++;
+    const fd = (q.d - this.rows[k]) / (this.rows[k + 1] - this.rows[k]);
+    const H = this.ribbonHeights;
+    const a = H[r0 * rows + k];
+    const b = H[r0 * rows + k + 1];
+    const c = H[r1 * rows + k];
+    const d = H[r1 * rows + k + 1];
+    // Quad split into (a, b, c) and (b, d, c), as in ribbonGeo().
+    if (fs + fd <= 1) return a + (c - a) * fs + (b - a) * fd;
+    return d + (b - d) * (1 - fs) + (c - d) * (1 - fd);
   }
 
   ribbonGeo(): GeoData {
-    if (!this.ribbonCache) this.buildSurfaces();
-    return this.ribbonCache!;
+    if (this.ribbonGeoCache) return this.ribbonGeoCache;
+    const rings = this.samples.length;
+    const rows = this.rows.length;
+    const outer = this.ribbonOuter;
+    const positions = new Float32Array(rings * rows * 3);
+    const uvs = new Float32Array(rings * rows * 2);
+    for (let r = 0; r < rings; r++) {
+      for (let k = 0; k < rows; k++) {
+        const v = this.ribbonVertex(r, k);
+        const i = r * rows + k;
+        positions[i * 3] = v.x;
+        positions[i * 3 + 1] = this.ribbonHeights[i];
+        positions[i * 3 + 2] = v.z;
+        // u runs once around the lap, v across the ribbon.
+        uvs[i * 2] = r / rings;
+        uvs[i * 2 + 1] = (this.rows[k] + outer) / (2 * outer);
+      }
+    }
+    // The last ring joins the first; duplicate it with u = 1 so the texture does not smear at the seam.
+    const seamPos = new Float32Array((rings + 1) * rows * 3);
+    const seamUv = new Float32Array((rings + 1) * rows * 2);
+    seamPos.set(positions);
+    seamUv.set(uvs);
+    for (let k = 0; k < rows; k++) {
+      const src = k;
+      const dst = rings * rows + k;
+      seamPos[dst * 3] = positions[src * 3];
+      seamPos[dst * 3 + 1] = positions[src * 3 + 1];
+      seamPos[dst * 3 + 2] = positions[src * 3 + 2];
+      seamUv[dst * 2] = 1;
+      seamUv[dst * 2 + 1] = uvs[src * 2 + 1];
+    }
+    const indices = new Uint32Array(rings * (rows - 1) * 6);
+    let n = 0;
+    for (let r = 0; r < rings; r++) {
+      for (let k = 0; k < rows - 1; k++) {
+        const a = r * rows + k;
+        const b = a + 1;
+        const c = (r + 1) * rows + k;
+        const d = c + 1;
+        // Wound so the normal points up: rows run to the right, rings along the track.
+        indices[n++] = a;
+        indices[n++] = b;
+        indices[n++] = c;
+        indices[n++] = b;
+        indices[n++] = d;
+        indices[n++] = c;
+      }
+    }
+    this.ribbonGeoCache = { positions: seamPos, indices, uvs: seamUv };
+    return this.ribbonGeoCache;
   }
 
-  /**
-   * Partition the grid's triangles: those near the track become the textured ribbon (unindexed,
-   * with lap-position UVs), the rest the vertex-coloured loose sand. Every triangle goes to
-   * exactly one mesh, so there is no overlap and no seam to hide.
-   */
-  private buildSurfaces(): void {
-    const { nrows, ncols } = this;
-    const vertCount = (nrows + 1) * (ncols + 1);
+  // ---- Grids: coarse sand outside, fine physics under the ribbon ----------------------------
+
+  private makeGrid(cell: number, sizeX: number, sizeZ: number, cx: number, cz: number, height: (x: number, z: number) => number): Grid {
+    const ncols = Math.ceil(sizeX / cell);
+    const nrows = Math.ceil(sizeZ / cell);
+    const heights = new Float32Array((ncols + 1) * (nrows + 1));
+    for (let j = 0; j <= ncols; j++) {
+      const x = cx + (j - ncols / 2) * cell;
+      for (let i = 0; i <= nrows; i++) {
+        const z = cz + (i - nrows / 2) * cell;
+        heights[j * (nrows + 1) + i] = height(x, z);
+      }
+    }
+    return { cell, ncols, nrows, cx, cz, heights };
+  }
+
+  /** The loose sand. Under the ribbon it is sunk so the ribbon is always the surface on top. */
+  private buildCoarse(): Grid {
+    const outer = this.ribbonOuter;
+    return this.makeGrid(CELL_COARSE, this.sizeX, this.sizeZ, 0, 0, (x, z) => {
+      const q = this.query(x, z);
+      const h = this.profile(q, x, z);
+      const ad = Math.abs(q.d);
+      if (ad >= outer) return h;
+      // Ramp the sink in from the seam so the surface just outside the ribbon is untouched.
+      const inward = outer - ad;
+      return h - SINK * Math.min(1, inward / OVERLAP) - 0.15 * Math.max(0, inward - OVERLAP) / outer;
+    });
+  }
+
+  /** Physics under the track: the ribbon surface resampled. Outside it, just below the coarse surface. */
+  private buildFine(): Grid {
+    const outer = this.ribbonOuter;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const p of this.samples) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+    }
+    const pad = outer + 1;
+    const sizeX = maxX - minX + 2 * pad;
+    const sizeZ = maxZ - minZ + 2 * pad;
+    return this.makeGrid(TRACK_DETAIL.fineCell, sizeX, sizeZ, (minX + maxX) / 2, (minZ + maxZ) / 2, (x, z) => {
+      const r = this.ribbonHeightAt(x, z);
+      if (r !== null) return r;
+      return gridHeightAt(this.coarse, x, z) - SINK;
+    });
+  }
+
+  /** Vertex-coloured coarse sand: all triangles except those well under the ribbon. */
+  coarseGeo(): GeoData {
+    if (this.coarseGeoCache) return this.coarseGeoCache;
+    const g = this.coarse;
+    const { ncols, nrows } = g;
+    const vertCount = (ncols + 1) * (nrows + 1);
     const positions = new Float32Array(vertCount * 3);
     const colors = new Float32Array(vertCount * 3);
-    const tArr = this.vertT;
-    const dArr = this.vertD;
-    const outer = this.ribbonOuter;
+    const lateral = new Float32Array(vertCount);
     const sand = new THREE.Color(0xdcc7a0);
     const sandDark = new THREE.Color(0xc4ad82);
     const c = new THREE.Color();
     for (let j = 0; j <= ncols; j++) {
-      const x = this.vertexX(j);
+      const x = g.cx + (j - ncols / 2) * g.cell;
       for (let i = 0; i <= nrows; i++) {
-        const z = this.vertexZ(i);
+        const z = g.cz + (i - nrows / 2) * g.cell;
         const v = j * (nrows + 1) + i;
         positions[v * 3] = x;
-        positions[v * 3 + 1] = this.heights[v];
+        positions[v * 3 + 1] = g.heights[v];
         positions[v * 3 + 2] = z;
+        lateral[v] = Math.abs(this.query(x, z).d);
         // Coarse patches of lighter and darker sand with crisp edges.
         const level = Math.floor(noise2(x * 0.45, z * 0.45) * 4) / 3;
         c.copy(sand).lerp(sandDark, level);
@@ -363,46 +504,71 @@ export class Track {
         colors[v * 3 + 2] = c.b;
       }
     }
-    const terrainIdx: number[] = [];
-    const ribPos: number[] = [];
-    const ribUv: number[] = [];
-    const tri = (a: number, b: number, cc: number) => {
-      const dd = (Math.abs(dArr[a]) + Math.abs(dArr[b]) + Math.abs(dArr[cc])) / 3;
-      if (dd >= outer) {
-        terrainIdx.push(a, b, cc);
-        return;
-      }
-      // Unwrap the lap coordinate across the start line so the seam does not smear.
-      const ts = [tArr[a], tArr[b], tArr[cc]];
-      const wrap = Math.max(...ts) - Math.min(...ts) > 0.5;
-      for (const [v, t] of [[a, ts[0]], [b, ts[1]], [cc, ts[2]]] as [number, number][]) {
-        ribPos.push(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]);
-        ribUv.push(wrap && t < 0.5 ? t + 1 : t, Math.max(0, Math.min(1, (dArr[v] + outer) / (2 * outer))));
-      }
-    };
+    const keep = this.ribbonOuter - OVERLAP * 0.8;
+    const indices: number[] = [];
     for (let j = 0; j < ncols; j++) {
       for (let i = 0; i < nrows; i++) {
-        const a = j * (nrows + 1) + i; // (col j, row i)
-        const b = a + 1; // (col j, row i+1)
-        const cIdx = a + (nrows + 1); // (col j+1, row i)
-        const d = cIdx + 1; // (col j+1, row i+1)
-        // Same split as Rapier's heightfield: diagonal from b to c.
+        const a = j * (nrows + 1) + i;
+        const b = a + 1;
+        const cIdx = a + (nrows + 1);
+        const d = cIdx + 1;
+        const tri = (p: number, q: number, r: number) => {
+          if ((lateral[p] + lateral[q] + lateral[r]) / 3 >= keep) indices.push(p, q, r);
+        };
         tri(a, b, cIdx);
         tri(b, d, cIdx);
       }
     }
-    this.terrainCache = { positions, indices: new Uint32Array(terrainIdx), colors };
-    this.ribbonCache = { positions: new Float32Array(ribPos), indices: new Uint32Array(0), uvs: new Float32Array(ribUv) };
+    this.coarseGeoCache = { positions, indices: new Uint32Array(indices), colors };
+    return this.coarseGeoCache;
   }
 
-  private createTerrainMesh(): THREE.Mesh {
-    const g = this.terrainGeo();
+  // ---- Physics and visuals -----------------------------------------------------------------
+
+  createCollider(world: RAPIER.World): RAPIER.Collider[] {
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const make = (g: Grid) =>
+      world.createCollider(
+        RAPIER.ColliderDesc.heightfield(
+          g.nrows,
+          g.ncols,
+          g.heights,
+          { x: g.ncols * g.cell, y: 1, z: g.nrows * g.cell },
+          RAPIER.HeightFieldFlags.FIX_INTERNAL_EDGES,
+        )
+          .setTranslation(g.cx, 0, g.cz)
+          .setFriction(0.8)
+          .setRestitution(0.05),
+        body,
+      );
+    return [make(this.coarse), make(this.fine)];
+  }
+
+  /** Visual meshes. Browser only (textures). */
+  createMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.add(this.createCoarseMesh());
+    group.add(this.createRibbonMesh());
+    this.mesh = group;
+    return group;
+  }
+
+  private createCoarseMesh(): THREE.Mesh {
+    const g = this.coarseGeo();
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(g.colors!, 3));
     geo.setIndex(new THREE.BufferAttribute(g.indices, 1));
     geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
+    const mat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.95,
+      metalness: 0,
+      flatShading: true,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
     return mesh;
@@ -457,6 +623,7 @@ export class Track {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(g.uvs!, 2));
+    geo.setIndex(new THREE.BufferAttribute(g.indices, 1));
     geo.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({ map: this.createRibbonTexture(), roughness: 0.95, metalness: 0 });
     const mesh = new THREE.Mesh(geo, mat);

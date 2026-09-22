@@ -3,7 +3,8 @@
 import { initPhysics, RAPIER } from '../src/physics.ts';
 import { Track, type TrackDef } from '../src/track.ts';
 import { Car } from '../src/car.ts';
-import { PHYS_DT, WHEEL, FLICK } from '../src/config.ts';
+import { PHYS_DT, WHEEL, FLICK, TRACK_DETAIL } from '../src/config.ts';
+if (process.env.FINE_CELL) TRACK_DETAIL.fineCell = Number(process.env.FINE_CELL);
 
 const CAL_TRACK: TrackDef = {
   name: 'calibration',
@@ -25,6 +26,9 @@ async function main() {
   console.log('FLICK', JSON.stringify(FLICK));
   console.log('WHEEL', JSON.stringify(WHEEL));
   const world = await initPhysics();
+  if (process.env.SOLVER_ITERS) world.integrationParameters.numSolverIterations = Number(process.env.SOLVER_ITERS);
+  const DT = process.env.HZ ? 1 / Number(process.env.HZ) : PHYS_DT;
+  world.timestep = DT;
   const track = new Track(CAL_TRACK);
   track.createCollider(world);
   world.step();
@@ -35,9 +39,9 @@ async function main() {
     const ray = new RAPIER.Ray({ x, y: 5, z }, { x: 0, y: -1, z: 0 });
     const hit = world.castRay(ray, 20, true);
     const y = hit ? 5 - hit.timeOfImpact : NaN;
-    const err = hit ? Math.abs(y - track.heightAt(x, z)) : 1;
+    const err = hit ? Math.abs(y - track.surfaceHeightAt(x, z)) : 1;
     maxErr = Math.max(maxErr, err);
-    console.log(`height at (${x}, ${z}): rapier=${y.toFixed(3)} analytic=${track.heightAt(x, z).toFixed(3)}`);
+    console.log(`height at (${x}, ${z}): rapier=${y.toFixed(3)} surface=${track.surfaceHeightAt(x, z).toFixed(3)}`);
   }
   console.log(`max surface error: ${maxErr.toFixed(4)} ${maxErr < 0.03 ? 'OK' : 'MISMATCH'}`);
 
@@ -62,8 +66,8 @@ async function main() {
       let t = 0;
       while (t < 12) {
         world.step();
-        t += PHYS_DT;
-        if (t > 0.3 && car.settled(PHYS_DT)) break;
+        t += DT;
+        if (t > 0.3 && car.settled(DT)) break;
       }
       const pos = car.position;
       const q = track.query(pos.x, pos.z);

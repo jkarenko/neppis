@@ -173,17 +173,21 @@ export class Game {
     this.events.changed();
   }
 
-  /** After the physics step. */
+  /** After the physics step. Runs 240 times a second, so it queries the track once per car. */
   afterStep(dt = PHYS_DT): void {
+    let currentQuery: TrackQuery | null = null;
     for (const p of this.players) {
-      const pos = p.car.position;
-      this.trackLap(p, this.track.query(pos.x, pos.z));
+      if (p.car.body.isSleeping() && p !== this.current) continue;
+      const pos = p.car.body.translation();
+      const q = this.track.query(pos.x, pos.z);
+      this.trackLap(p, q);
+      if (p === this.current) currentQuery = q;
     }
 
-    if (this.phase === 'flying' && this.current) {
+    if (this.phase === 'flying' && this.current && currentQuery) {
       const car = this.current.car;
-      const pos = car.position;
-      const q = this.track.query(pos.x, pos.z);
+      const pos = car.body.translation();
+      const q = currentQuery;
       this.flightTime += dt;
       const last = this.path[this.path.length - 1];
       const d = Math.hypot(pos.x - last.x, pos.z - last.z);

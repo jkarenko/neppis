@@ -3,6 +3,14 @@ export const GRAVITY = -98.1;
 // 240 Hz: a wheel at full speed moves well under its own radius per step, so no CCD is needed.
 // Rapier's CCD clamps the motion of fast small bodies, which throttled the wheels at 120 Hz.
 export const PHYS_DT = 1 / 240;
+/** At most this many physics steps per rendered frame: a slow device gets slow motion, not a stall. */
+export const MAX_STEPS_PER_FRAME = 8;
+
+/** Track grid detail. Mutable so calibration scripts can sweep it. */
+export const TRACK_DETAIL = {
+  /** Physics grid under the track (world units). 12.5 mm stays within 2 mm of the drawn ribbon. */
+  fineCell: 0.125,
+};
 
 export const CAR = {
   length: 0.8,

@@ -6,7 +6,7 @@ import { Game, type Player } from './game.ts';
 import { FlickIndicator } from './indicator.ts';
 import { FlickInput } from './input.ts';
 import { Hud } from './hud.ts';
-import { DEFAULT_RULES, PHYS_DT } from './config.ts';
+import { DEFAULT_RULES, MAX_STEPS_PER_FRAME, PHYS_DT } from './config.ts';
 
 async function main(): Promise<void> {
   const world = await initPhysics();
@@ -132,18 +132,31 @@ async function main(): Promise<void> {
   hud.showPower(null);
   hud.showSetup(startRace);
 
+  // Frame statistics overlay: add ?stats to the URL.
+  const stats = new URLSearchParams(location.search).has('stats') ? document.createElement('div') : null;
+  if (stats) {
+    stats.id = 'stats';
+    stats.style.cssText = 'position:fixed;left:12px;bottom:12px;font:12px monospace;background:rgba(0,0,0,.6);color:#fff;padding:6px 8px;border-radius:6px;white-space:pre;z-index:5';
+    document.body.appendChild(stats);
+  }
+  const acc = { frames: 0, physMs: 0, renderMs: 0, steps: 0, time: 0 };
+
   const timer = new THREE.Timer();
   let accumulator = 0;
   renderer.setAnimationLoop(() => {
     timer.update();
     const frameDt = Math.min(timer.getDelta(), 0.1);
-    accumulator += frameDt;
+    accumulator = Math.min(accumulator + frameDt, MAX_STEPS_PER_FRAME * PHYS_DT);
+    const tPhys = performance.now();
     while (accumulator >= PHYS_DT) {
       world.step();
       game.afterStep(PHYS_DT);
       accumulator -= PHYS_DT;
+      acc.steps++;
     }
     for (const p of game.players) p.car.sync();
+    const tRender = performance.now();
+    acc.physMs += tRender - tPhys;
 
     if (camAnim) {
       camAnim.t = Math.min(1, camAnim.t + frameDt / 0.7);
@@ -161,6 +174,23 @@ async function main(): Promise<void> {
 
     indicator.update(timer.getElapsed());
     renderer.render(scene, camera);
+    if (stats) {
+      acc.renderMs += performance.now() - tRender;
+      acc.frames++;
+      acc.time += frameDt;
+      if (acc.time >= 0.5) {
+        const f = acc.frames;
+        stats.textContent =
+          `${(f / acc.time).toFixed(0)} fps\nphysics ${(acc.physMs / f).toFixed(2)} ms/frame (${(acc.steps / f).toFixed(1)} steps)\n` +
+          `render ${(acc.renderMs / f).toFixed(2)} ms/frame (js side)\nframe ${((acc.time * 1000) / f).toFixed(1)} ms\n` +
+          `phase ${game.phase}${game.current ? ' ' + game.current.name : ''}`;
+        acc.frames = 0;
+        acc.physMs = 0;
+        acc.renderMs = 0;
+        acc.steps = 0;
+        acc.time = 0;
+      }
+    }
   });
 }
 
