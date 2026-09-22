@@ -139,7 +139,6 @@ async function main(): Promise<void> {
     const frameDt = Math.min(timer.getDelta(), 0.1);
     accumulator += frameDt;
     while (accumulator >= PHYS_DT) {
-      game.beforeStep(PHYS_DT);
       world.step();
       game.afterStep(PHYS_DT);
       accumulator -= PHYS_DT;

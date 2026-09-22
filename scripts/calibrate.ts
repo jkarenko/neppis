@@ -3,7 +3,7 @@
 import { initPhysics, RAPIER } from '../src/physics.ts';
 import { Track, type TrackDef } from '../src/track.ts';
 import { Car } from '../src/car.ts';
-import { PHYS_DT, TYRE, FLICK } from '../src/config.ts';
+import { PHYS_DT, WHEEL, FLICK } from '../src/config.ts';
 
 const CAL_TRACK: TrackDef = {
   name: 'calibration',
@@ -14,15 +14,16 @@ const CAL_TRACK: TrackDef = {
 };
 
 async function main() {
-  if (process.env.ROLL_DECEL) TYRE.rollDecel = Number(process.env.ROLL_DECEL);
-  if (process.env.ROLL_DAMP) TYRE.rollDamp = Number(process.env.ROLL_DAMP);
+  if (process.env.CRR) WHEEL.rollingCoefficient = Number(process.env.CRR);
+  if (process.env.WFRICTION) WHEEL.friction = Number(process.env.WFRICTION);
+  if (process.env.WDENSITY) WHEEL.density = Number(process.env.WDENSITY);
   if (process.env.MAX_SPEED) FLICK.maxSpeed = Number(process.env.MAX_SPEED);
-  for (const k of ['speedExp', 'contactBack', 'contactHeight'] as const) {
+  for (const k of ['speedExp'] as const) {
     const v = process.env[k.toUpperCase()];
     if (v) FLICK[k] = Number(v);
   }
   console.log('FLICK', JSON.stringify(FLICK));
-  console.log('TYRE', JSON.stringify(TYRE), 'maxSpeed', FLICK.maxSpeed);
+  console.log('WHEEL', JSON.stringify(WHEEL));
   const world = await initPhysics();
   const track = new Track(CAL_TRACK);
   track.createCollider(world);
@@ -34,7 +35,7 @@ async function main() {
     const ray = new RAPIER.Ray({ x, y: 5, z }, { x: 0, y: -1, z: 0 });
     const hit = world.castRay(ray, 20, true);
     const y = hit ? 5 - hit.timeOfImpact : NaN;
-    const err = Math.abs(y - track.heightAt(x, z));
+    const err = hit ? Math.abs(y - track.heightAt(x, z)) : 1;
     maxErr = Math.max(maxErr, err);
     console.log(`height at (${x}, ${z}): rapier=${y.toFixed(3)} analytic=${track.heightAt(x, z).toFixed(3)}`);
   }
@@ -57,11 +58,9 @@ async function main() {
     for (let k = 0; k < trials; k++) {
       car.setPose(slot.x, slot.z, slot.yaw, track.heightAt(slot.x, slot.z));
       for (let i = 0; i < 30; i++) world.step();
-      const f = car.forward;
-      car.flick(f.x, f.z, p);
+      car.flick(p);
       let t = 0;
       while (t < 12) {
-        car.updateTyres(PHYS_DT);
         world.step();
         t += PHYS_DT;
         if (t > 0.3 && car.settled(PHYS_DT)) break;

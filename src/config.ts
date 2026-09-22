@@ -1,6 +1,8 @@
 // World units: 1 unit = 1 dm (10 cm). A Formula-Neppis car is 8 x 4.5 x 3 cm.
 export const GRAVITY = -98.1;
-export const PHYS_DT = 1 / 120;
+// 240 Hz: a wheel at full speed moves well under its own radius per step, so no CCD is needed.
+// Rapier's CCD clamps the motion of fast small bodies, which throttled the wheels at 120 Hz.
+export const PHYS_DT = 1 / 240;
 
 export const CAR = {
   length: 0.8,
@@ -20,27 +22,23 @@ export const FLICK = {
   grabRadius: 1.0,
   /** ...or within this many CSS pixels of it on screen, whichever is more generous. */
   grabRadiusPx: 36,
-  /** Launch speed at full power, units/s. Speed scales with sqrt(power) so distance is roughly linear in power. */
-  maxSpeed: 22,
+  /** Launch speed at full power, units/s. */
+  maxSpeed: 19,
   /** Drags shorter than this on screen are not flicks: releasing simply cancels. */
   cancelPx: 44,
   /** speed = maxSpeed * power^speedExp. */
-  speedExp: 0.65,
-  /** Where the finger meets the car, relative to the body origin: this far behind it... */
-  contactBack: 0.4,
-  /** ...and this far above it (0 = axle height, 0.02 = middle of the chassis). */
-  contactHeight: 0.02,
+  speedExp: 0.5,
 };
 
-export const TYRE = {
-  /** Constant rolling deceleration on damp sand, units/s^2. */
-  rollDecel: 7,
-  /** Viscous longitudinal damping, 1/s. */
-  rollDamp: 0.3,
-  /** Lateral (skid) damping, 1/s. */
-  lateralDamp: 9,
-  /** How quickly the nose swings toward the direction of travel, 1/s. */
-  yawAlign: 3,
+export const WHEEL = {
+  /** Rubber on damp sand. */
+  friction: 0.9,
+  /** Heavy wheels keep the centre of mass low, like the weighted bottoms of tuned cars. */
+  density: 4.0,
+  /** Rolling resistance coefficient of damp sand (deceleration = coefficient x g). */
+  rollingCoefficient: 0.12,
+  /** How sharply the axle brake reaches its full torque as the wheel starts to spin. */
+  brakeStiffness: 50,
 };
 
 export type OffTrackRule = 'lastOnTrack' | 'flickStart';

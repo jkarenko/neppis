@@ -1,8 +1,7 @@
 import { initPhysics, RAPIER } from '../src/physics.ts';
 import { Track, type TrackDef } from '../src/track.ts';
 import { Car } from '../src/car.ts';
-import { PHYS_DT, TYRE } from '../src/config.ts';
-TYRE.rollDecel = 6; TYRE.rollDamp = 0.35;
+import { PHYS_DT } from '../src/config.ts';
 
 const CAL_TRACK: TrackDef = {
   name: 'calibration', width: 1.5, area: [70, 30],
@@ -22,20 +21,17 @@ const car = new Car(world, 0xff0000, slot.x, slot.z, track.heightAt(slot.x, slot
 console.log('mass', car.body.mass().toFixed(3), 'slot', slot, 'ground', track.heightAt(slot.x, slot.z).toFixed(3));
 for (let i = 0; i < 60; i++) world.step();
 console.log('rest y', car.position.y.toFixed(3), 'up', car.upDot.toFixed(3));
-const f = car.forward;
-car.flick(f.x, f.z, p);
+car.flick(p);
 let t = 0;
 let next = 0;
 while (t < 4) {
-  car.updateTyres(PHYS_DT);
   world.step();
   t += PHYS_DT;
   if (t >= next && t < 1.6) {
     const v = car.body.linvel();
     const a = car.body.angvel();
     const pos = car.position;
-    const g = (car as any).grounded();
-    console.log(`t=${t.toFixed(2)} x=${pos.x.toFixed(2)} y=${pos.y.toFixed(3)} z=${pos.z.toFixed(2)} v=(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}) w=(${a.x.toFixed(1)},${a.y.toFixed(1)},${a.z.toFixed(1)}) up=${car.upDot.toFixed(2)} grounded=${g} sleep=${car.body.isSleeping()}`);
+    console.log(`t=${t.toFixed(2)} x=${pos.x.toFixed(2)} y=${pos.y.toFixed(3)} z=${pos.z.toFixed(2)} v=(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}) w=(${a.x.toFixed(1)},${a.y.toFixed(1)},${a.z.toFixed(1)}) up=${car.upDot.toFixed(2)} sleep=${car.body.isSleeping()}`);
     next += 0.05;
   }
 }

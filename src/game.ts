@@ -109,7 +109,7 @@ export class Game {
   clear(): void {
     for (const p of this.players) {
       this.scene.remove(p.car.mesh);
-      this.world.removeRigidBody(p.car.body);
+      p.car.dispose();
     }
     this.players = [];
     this.current = null;
@@ -167,15 +167,10 @@ export class Game {
     this.path = [{ ...this.flickStart }];
     this.pathLen = 0;
     this.flightTime = 0;
-    car.flick(dir.x, dir.z, power);
+    car.flick(power);
     this.phase = 'flying';
     this.events.flick(this.current);
     this.events.changed();
-  }
-
-  /** Before the physics step. */
-  beforeStep(dt = PHYS_DT): void {
-    for (const p of this.players) p.car.updateTyres(dt);
   }
 
   /** After the physics step. */

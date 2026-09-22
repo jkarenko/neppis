@@ -16,11 +16,9 @@ function trial(startIdx: number, angleOff: number, power: number): string {
   const yaw = Math.atan2(-tg.z, tg.x) + angleOff;
   car.setPose(p.x, p.z, yaw, track.heightAt(p.x, p.z));
   for (let i = 0; i < 30; i++) world.step();
-  const f = car.forward;
-  car.flick(f.x, f.z, power);
+  car.flick(power);
   let t = 0;
   while (t < 12) {
-    car.updateTyres(PHYS_DT);
     world.step();
     t += PHYS_DT;
     if (t > 0.3 && car.settled(PHYS_DT)) break;

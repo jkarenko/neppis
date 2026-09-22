@@ -1,61 +1,105 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { CAR, FLICK, TYRE } from './config.ts';
+import { CAR, FLICK, GRAVITY, WHEEL } from './config.ts';
 
 const WHEEL_X = 0.28;
 const WHEEL_Z = 0.2;
 const WHEEL_Y = -0.08;
+const WHEEL_OFFSETS: [number, number, number][] = [
+  [WHEEL_X, WHEEL_Y, -WHEEL_Z],
+  [WHEEL_X, WHEEL_Y, WHEEL_Z],
+  [-WHEEL_X, WHEEL_Y, -WHEEL_Z],
+  [-WHEEL_X, WHEEL_Y, WHEEL_Z],
+];
 
 /** Quaternion for a yaw about +Y. Forward is +X, so forward = (cos yaw, 0, -sin yaw). */
 export function yawQuat(yaw: number): { x: number; y: number; z: number; w: number } {
   return { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
 }
 
+function rotateY(v: [number, number, number], yaw: number): { x: number; y: number; z: number } {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return { x: v[0] * c + v[2] * s, y: v[1], z: -v[0] * s + v[2] * c };
+}
+
+/**
+ * A neppis car as five rigid bodies: a chassis and four wheels on revolute joints.
+ * Rolling, skidding, grip and tipping all come out of the wheels' contact with the sand.
+ * The only non-contact force is a rolling-resistance brake on each axle.
+ */
 export class Car {
   readonly body: RAPIER.RigidBody;
+  readonly wheels: RAPIER.RigidBody[] = [];
   readonly mesh: THREE.Group;
   readonly color: number;
-  private restTime = 0;
+  private readonly chassisMesh: THREE.Group;
+  private readonly wheelMeshes: THREE.Mesh[] = [];
   private readonly world: RAPIER.World;
-  private readonly ray: RAPIER.Ray;
+  private restTime = 0;
 
   constructor(world: RAPIER.World, color: number, x: number, z: number, groundY: number, yaw: number) {
     this.world = world;
     this.color = color;
-    const desc = RAPIER.RigidBodyDesc.dynamic()
-      .setTranslation(x, groundY + CAR.restHeight + 0.02, z)
-      .setRotation(yawQuat(yaw))
-      .setCcdEnabled(true)
-      .setLinearDamping(0.05)
-      .setAngularDamping(1.0);
-    this.body = world.createRigidBody(desc);
+    const y = groundY + CAR.restHeight + 0.02;
+    const q = yawQuat(yaw);
 
-    const chassis = RAPIER.ColliderDesc.cuboid(0.36, 0.09, 0.15)
-      .setTranslation(0, 0.02, 0)
-      .setFriction(0.6)
-      .setRestitution(0.05)
-      .setDensity(1.0);
-    world.createCollider(chassis, this.body);
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        const wheel = RAPIER.ColliderDesc.ball(CAR.wheelRadius)
-          .setTranslation(sx * WHEEL_X, WHEEL_Y, sz * WHEEL_Z)
-          .setFriction(0.02)
-          .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-          .setRestitution(0.1)
-          .setDensity(4.0);
-        world.createCollider(wheel, this.body);
-      }
+    this.body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setRotation(q).setAngularDamping(0.2),
+    );
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(0.36, 0.09, 0.15).setTranslation(0, 0.02, 0).setFriction(0.6).setRestitution(0.05).setDensity(1.0),
+      this.body,
+    );
+
+    for (const off of WHEEL_OFFSETS) {
+      const p = rotateY(off, yaw);
+      const wheel = world.createRigidBody(
+        RAPIER.RigidBodyDesc.dynamic().setTranslation(x + p.x, y + p.y, z + p.z).setRotation(q),
+      );
+      world.createCollider(
+        RAPIER.ColliderDesc.ball(CAR.wheelRadius).setFriction(WHEEL.friction).setRestitution(0.1).setDensity(WHEEL.density),
+        wheel,
+      );
+      this.wheels.push(wheel);
     }
-    this.ray = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
-    this.mesh = Car.buildMesh(color);
+    // Rolling resistance of damp sand: a constant torque on each axle opposing the wheel's spin,
+    // equal to the rolling coefficient times the wheel's share of the car's weight times its radius.
+    const wheelLoad = (this.mass * -GRAVITY) / 4;
+    const brakeTorque = WHEEL.rollingCoefficient * wheelLoad * CAR.wheelRadius;
+    WHEEL_OFFSETS.forEach((off, i) => {
+      const params = RAPIER.JointData.revolute({ x: off[0], y: off[1], z: off[2] }, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+      const joint = world.createImpulseJoint(params, this.body, this.wheels[i], true) as RAPIER.RevoluteImpulseJoint;
+      joint.setContactsEnabled(false);
+      joint.configureMotorModel(RAPIER.MotorModel.ForceBased);
+      joint.configureMotorVelocity(0, WHEEL.brakeStiffness);
+      joint.setMotorMaxForce(brakeTorque);
+    });
+
+    this.mesh = new THREE.Group();
+    this.chassisMesh = Car.buildChassisMesh(color);
+    this.mesh.add(this.chassisMesh);
+    const wheelGeo = new THREE.CylinderGeometry(CAR.wheelRadius, CAR.wheelRadius, 0.1, 18);
+    wheelGeo.rotateX(Math.PI / 2);
+    const hubGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.11, 6);
+    hubGeo.rotateX(Math.PI / 2);
+    const rubber = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.9 });
+    const chrome = new THREE.MeshStandardMaterial({ color: 0xcfd3d6, roughness: 0.3, metalness: 0.8 });
+    for (let i = 0; i < 4; i++) {
+      const w = new THREE.Mesh(wheelGeo, rubber);
+      const hub = new THREE.Mesh(hubGeo, chrome);
+      w.add(hub);
+      w.castShadow = true;
+      w.receiveShadow = true;
+      this.wheelMeshes.push(w);
+      this.mesh.add(w);
+    }
     this.sync();
   }
 
-  static buildMesh(color: number): THREE.Group {
+  static buildChassisMesh(color: number): THREE.Group {
     const g = new THREE.Group();
     const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.1 });
-    const rubber = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.9 });
     const chrome = new THREE.MeshStandardMaterial({ color: 0xcfd3d6, roughness: 0.3, metalness: 0.8 });
     const skin = new THREE.MeshStandardMaterial({ color: 0xf1f1f1, roughness: 0.5 });
 
@@ -85,20 +129,6 @@ export class Car {
       pipe.position.set(-0.25, -0.02, sx * 0.17);
       g.add(pipe);
     }
-    const wheelGeo = new THREE.CylinderGeometry(CAR.wheelRadius, CAR.wheelRadius, 0.1, 18);
-    wheelGeo.rotateX(Math.PI / 2);
-    const hubGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.11, 12);
-    hubGeo.rotateX(Math.PI / 2);
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        const w = new THREE.Mesh(wheelGeo, rubber);
-        w.position.set(sx * WHEEL_X, WHEEL_Y, sz * WHEEL_Z);
-        g.add(w);
-        const hub = new THREE.Mesh(hubGeo, chrome);
-        hub.position.copy(w.position);
-        g.add(hub);
-      }
-    }
     g.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         o.castShadow = true;
@@ -106,6 +136,23 @@ export class Car {
       }
     });
     return g;
+  }
+
+  /** Chassis plus wheels. */
+  get mass(): number {
+    return this.body.mass() + this.wheels.reduce((m, w) => m + w.mass(), 0);
+  }
+
+  /** Height of the whole car's centre of mass, chassis and wheels together. */
+  get centreOfMassY(): number {
+    let m = this.body.mass();
+    let my = m * this.body.worldCom().y;
+    for (const w of this.wheels) {
+      const wm = w.mass();
+      m += wm;
+      my += wm * w.worldCom().y;
+    }
+    return my / m;
   }
 
   get position(): THREE.Vector3 {
@@ -138,86 +185,68 @@ export class Car {
     return Math.hypot(v.x, v.y, v.z);
   }
 
-  setPose(x: number, z: number, yaw: number, groundY: number): void {
-    this.body.setTranslation({ x, y: groundY + CAR.restHeight + 0.02, z }, true);
-    this.body.setRotation(yawQuat(yaw), true);
-    this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-    this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  private placeAt(x: number, y: number, z: number, yaw: number): void {
+    const q = yawQuat(yaw);
+    const zero = { x: 0, y: 0, z: 0 };
+    this.body.setTranslation({ x, y, z }, true);
+    this.body.setRotation(q, true);
+    this.body.setLinvel(zero, true);
+    this.body.setAngvel(zero, true);
+    this.wheels.forEach((w, i) => {
+      const p = rotateY(WHEEL_OFFSETS[i], yaw);
+      w.setTranslation({ x: x + p.x, y: y + p.y, z: z + p.z }, true);
+      w.setRotation(q, true);
+      w.setLinvel(zero, true);
+      w.setAngvel(zero, true);
+    });
     this.restTime = 0;
     this.sync();
+  }
+
+  setPose(x: number, z: number, yaw: number, groundY: number): void {
+    this.placeAt(x, groundY + CAR.restHeight + 0.02, z, yaw);
   }
 
   setYaw(yaw: number): void {
-    this.body.setRotation(yawQuat(yaw), true);
-    this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-    this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    this.sync();
+    const t = this.body.translation();
+    this.placeAt(t.x, t.y, t.z, yaw);
   }
 
   /**
-   * Strike the car with the finger: a single horizontal impulse applied where the finger meets
-   * the rear of the body. Nothing else is scripted; whether the car hops, skids or tips over is
-   * decided by the physics of its contact with the sand.
+   * Strike the car with the finger. A flick is, to the car, an instant acceleration: the car is
+   * handed over already rolling along its nose at the launch speed, wheels spinning in step with
+   * it, exactly as it would be after a run-up on flat sand. From here on everything is physics:
+   * rolling resistance, grip, ridges, jumps, collisions and tipping.
    */
-  flick(dirX: number, dirZ: number, power: number): void {
+  flick(power: number): void {
     const p = Math.max(0, Math.min(1, power));
-    const len = Math.hypot(dirX, dirZ) || 1;
-    const dx = dirX / len;
-    const dz = dirZ / len;
     const speed = FLICK.maxSpeed * Math.pow(p, FLICK.speedExp);
-    const j = speed * this.body.mass();
-    const pos = this.body.translation();
-    const point = {
-      x: pos.x - dx * FLICK.contactBack,
-      y: pos.y + FLICK.contactHeight,
-      z: pos.z - dz * FLICK.contactBack,
-    };
-    this.body.wakeUp();
-    this.body.applyImpulseAtPoint({ x: dx * j, y: 0, z: dz * j }, point, true);
-    this.restTime = 0;
-  }
-
-  private grounded(): boolean {
-    const t = this.body.translation();
-    this.ray.origin.x = t.x;
-    this.ray.origin.y = t.y;
-    this.ray.origin.z = t.z;
-    const hit = this.world.castRay(this.ray, CAR.restHeight + 0.14, true, undefined, undefined, undefined, this.body);
-    return hit !== null;
-  }
-
-  /** Cheap tyre model: the car rolls easily along its nose and skids sideways. */
-  updateTyres(dt: number): void {
-    if (this.body.isSleeping()) return;
-    if (this.upDot < 0.5) return;
-    if (!this.grounded()) return;
     const f = this.forward;
-    if (f.lengthSq() < 0.5) return;
-    const rx = -f.z;
-    const rz = f.x;
-    const v = this.body.linvel();
-    let vl = v.x * f.x + v.z * f.z;
-    let vr = v.x * rx + v.z * rz;
-    const dec = TYRE.rollDecel * dt;
-    vl = Math.sign(vl) * Math.max(0, Math.abs(vl) - dec) * Math.exp(-TYRE.rollDamp * dt);
-    vr *= Math.exp(-TYRE.lateralDamp * dt);
-    this.body.setLinvel({ x: f.x * vl + rx * vr, y: v.y, z: f.z * vl + rz * vr }, false);
-    const sp = Math.hypot(vl, vr);
-    if (sp > 0.5) {
-      const slip = Math.atan2(vr, vl);
-      const av = this.body.angvel();
-      const target = -TYRE.yawAlign * slip;
-      av.y += (target - av.y) * Math.min(1, 5 * dt);
-      this.body.setAngvel(av, false);
+    const v = { x: f.x * speed, y: 0, z: f.z * speed };
+    // Axle axis is the wheel's local +Z; rolling forward without slip means spin = -v / r about it.
+    const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(this.quaternion);
+    const spin = axis.multiplyScalar(-speed / CAR.wheelRadius);
+    this.body.wakeUp();
+    this.body.setLinvel(v, true);
+    this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    for (const w of this.wheels) {
+      w.wakeUp();
+      w.setLinvel(v, true);
+      w.setAngvel({ x: spin.x, y: spin.y, z: spin.z }, true);
     }
+    this.restTime = 0;
   }
 
   /** True once the car has been at rest for a short while. */
   settled(dt: number): boolean {
-    if (this.body.isSleeping()) return true;
+    if (this.body.isSleeping() && this.wheels.every((w) => w.isSleeping())) return true;
     const v = this.body.linvel();
     const a = this.body.angvel();
-    const moving = Math.hypot(v.x, v.y, v.z) > 0.15 || Math.hypot(a.x, a.y, a.z) > 0.25;
+    let moving = Math.hypot(v.x, v.y, v.z) > 0.15 || Math.hypot(a.x, a.y, a.z) > 0.25;
+    for (const w of this.wheels) {
+      const wa = w.angvel();
+      if (Math.hypot(wa.x, wa.y, wa.z) > 1.0) moving = true;
+    }
     this.restTime = moving ? 0 : this.restTime + dt;
     return this.restTime > 0.35;
   }
@@ -225,7 +254,18 @@ export class Car {
   sync(): void {
     const t = this.body.translation();
     const r = this.body.rotation();
-    this.mesh.position.set(t.x, t.y, t.z);
-    this.mesh.quaternion.set(r.x, r.y, r.z, r.w);
+    this.chassisMesh.position.set(t.x, t.y, t.z);
+    this.chassisMesh.quaternion.set(r.x, r.y, r.z, r.w);
+    this.wheels.forEach((w, i) => {
+      const wt = w.translation();
+      const wr = w.rotation();
+      this.wheelMeshes[i].position.set(wt.x, wt.y, wt.z);
+      this.wheelMeshes[i].quaternion.set(wr.x, wr.y, wr.z, wr.w);
+    });
+  }
+
+  dispose(): void {
+    for (const w of this.wheels) this.world.removeRigidBody(w);
+    this.world.removeRigidBody(this.body);
   }
 }

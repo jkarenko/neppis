@@ -7,6 +7,8 @@ export async function initPhysics(): Promise<RAPIER.World> {
   world.timestep = PHYS_DT;
   const params = world.integrationParameters as unknown as { lengthUnit?: number };
   if ('lengthUnit' in params) params.lengthUnit = 0.5;
+  // Small, light bodies on joints: more solver iterations keep the wheels rigidly attached.
+  world.integrationParameters.numSolverIterations = 8;
   return world;
 }
 

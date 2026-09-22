@@ -37,9 +37,13 @@ pnpm simrace    # headless: three AI drivers race one lap, exercises the rules e
 - The track is a heightfield generated from a closed Catmull-Rom spline: a sunken strip with
   ridges of pushed-up sand along the edges, plus a jump and a dip. `FIX_INTERNAL_EDGES` on
   the heightfield collider matters: without it the wheel contacts snag on triangle edges.
-- The car is one rigid body: a chassis box plus four ball colliders as wheels. A small tyre
-  model in `Car.updateTyres` gives rolling resistance along the nose and heavy skid damping
-  sideways. The flick is a single horizontal impulse where the finger meets the rear of the
-  body, nothing else is scripted: whether the car hops, skids or tips is decided by power,
-  direction and the sand it meets. `pnpm terrain-risk` shows the jump and the edge ridges
-  turning hard flicks into kellis.
+- The car is five rigid bodies: a chassis and four ball wheels on revolute joints. Rolling,
+  skidding, grip and tipping all come out of contact forces. The only non-contact force is the
+  rolling resistance of damp sand, modelled as a constant torque on each axle (a capped joint
+  motor with a rolling coefficient of 0.12, so deceleration is 0.12 g).
+- A flick is an instant acceleration: the car is handed over already rolling along its nose at
+  the launch speed with its wheels spinning in step, as it would be after a run-up on flat sand.
+  Distance is then v² / 2a, linear in power. `pnpm terrain-risk` shows the jump and the edge
+  ridges turning hard flicks into kellis.
+- Physics runs at 240 Hz with CCD off. Rapier's CCD clamps the motion of small fast bodies and
+  was silently capping wheel speed at 120 Hz.

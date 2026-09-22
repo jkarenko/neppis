@@ -35,7 +35,6 @@ game.start([{ name: 'Kalle', ai: true }, { name: 'Pena', ai: true }, { name: 'Si
 
 let t = 0;
 while (!over && t < 600) {
-  game.beforeStep(PHYS_DT);
   world.step();
   game.afterStep(PHYS_DT);
   t += PHYS_DT;
