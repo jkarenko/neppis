@@ -23,7 +23,7 @@ export const FLICK = {
   /** ...or within this many CSS pixels of it on screen, whichever is more generous. */
   grabRadiusPx: 36,
   /** Launch speed at full power, units/s. */
-  maxSpeed: 19,
+  maxSpeed: 20,
   /** Drags shorter than this on screen are not flicks: releasing simply cancels. */
   cancelPx: 44,
   /** speed = maxSpeed * power^speedExp. */
@@ -31,6 +31,10 @@ export const FLICK = {
 };
 
 export const WHEEL = {
+  /** Half the tyre width. */
+  halfWidth: 0.05,
+  /** Rounding of the tyre's rims. */
+  rimRadius: 0.015,
   /** Rubber on damp sand. */
   friction: 0.9,
   /** Heavy wheels keep the centre of mass low, like the weighted bottoms of tuned cars. */

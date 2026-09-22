@@ -57,8 +57,14 @@ export class Car {
       const wheel = world.createRigidBody(
         RAPIER.RigidBodyDesc.dynamic().setTranslation(x + p.x, y + p.y, z + p.z).setRotation(q),
       );
+      // A tyre: a cylinder with slightly rounded rims. Rapier's cylinder axis is Y, so it is
+      // rotated a quarter turn about X to spin on the axle's Z.
       world.createCollider(
-        RAPIER.ColliderDesc.ball(CAR.wheelRadius).setFriction(WHEEL.friction).setRestitution(0.1).setDensity(WHEEL.density),
+        RAPIER.ColliderDesc.roundCylinder(WHEEL.halfWidth, CAR.wheelRadius - WHEEL.rimRadius, WHEEL.rimRadius)
+          .setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 })
+          .setFriction(WHEEL.friction)
+          .setRestitution(0.1)
+          .setDensity(WHEEL.density),
         wheel,
       );
       this.wheels.push(wheel);

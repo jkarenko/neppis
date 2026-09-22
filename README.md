@@ -37,7 +37,7 @@ pnpm simrace    # headless: three AI drivers race one lap, exercises the rules e
 - The track is a heightfield generated from a closed Catmull-Rom spline: a sunken strip with
   ridges of pushed-up sand along the edges, plus a jump and a dip. `FIX_INTERNAL_EDGES` on
   the heightfield collider matters: without it the wheel contacts snag on triangle edges.
-- The car is five rigid bodies: a chassis and four ball wheels on revolute joints. Rolling,
+- The car is five rigid bodies: a chassis and four cylinder tyres (rounded rims) on revolute joints. Rolling,
   skidding, grip and tipping all come out of contact forces. The only non-contact force is the
   rolling resistance of damp sand, modelled as a constant torque on each axle (a capped joint
   motor with a rolling coefficient of 0.12, so deceleration is 0.12 g).
