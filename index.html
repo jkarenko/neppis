@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>Neppis</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hud">
+      <div id="players"></div>
+      <div id="message"></div>
+      <div id="power"></div>
+      <div id="hint">Drag from the car to aim and wind up a flick: the car turns to face your aim, drag length is the power. Drag anywhere else to orbit the camera, wheel or pinch to zoom.</div>
+      <button id="newRace" type="button">New race</button>
+    </div>
+    <div id="setup">
+      <form id="setupForm">
+        <h1>Neppis</h1>
+        <p class="sub">Finnish flick-car racing. Three flicks per turn. Stay on the track, keep the rubber side down.</p>
+        <div id="playerRows"></div>
+        <div class="row">
+          <button type="button" id="addPlayer">+ Add player</button>
+          <label>Laps <input type="number" id="laps" min="1" max="5" value="1" /></label>
+        </div>
+        <button type="submit" id="start">Start race</button>
+      </form>
+    </div>
+    <div id="results" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
