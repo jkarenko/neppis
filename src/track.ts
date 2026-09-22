@@ -51,6 +51,7 @@ export interface TrackQuery {
   onTrack: boolean;
 }
 
+/** Grid cell, 12.5 mm. Halving it quadruples the triangle count (1.1 M) and tanks the framerate. */
 const CELL = 0.125;
 const SAMPLE_STEP = 0.1;
 /** Cars whose centre is within this margin outside the strip still count as on the track. */
@@ -225,6 +226,11 @@ export class Track {
     const rough = 0.035 * (noise2(x * 2.1, z * 2.1) - 0.5) + 0.015 * (noise2(x * 7, z * 7) - 0.5);
     const outsideMix = smooth(Math.max(0, Math.min(1, (ad - hw) / RIDGE_HALF)));
     h += rough * outsideMix;
+    // Damp, foot-smoothed sand still has millimetre texture and the odd grain.
+    // Wavelengths of 4 and 3 cells so the bumps are rolling, not spiky. No single-cell grains:
+    // a rigid grain launches a rigid wheel, whereas real sand grains crush and roll aside.
+    const fine = 0.006 * (noise2(x * 2 + 11, z * 2 + 5) - 0.5) + 0.004 * (noise2(x * 2.7 + 3, z * 2.7 + 17) - 0.5);
+    h += fine * (1 - outsideMix);
     // Features (jumps, dips) across the track, fading out over the ridge.
     const inTrack = 1 - smooth(Math.max(0, Math.min(1, (ad - hw) / (RIDGE_HALF * 1.5))));
     if (inTrack > 0) {
@@ -248,14 +254,25 @@ export class Track {
     return h;
   }
 
+  /** Lap position and lateral distance of every grid vertex, filled by buildHeights. */
+  private vertT!: Float32Array;
+  private vertD!: Float32Array;
+
   private buildHeights(): Float32Array {
     const { nrows, ncols } = this;
-    const heights = new Float32Array((nrows + 1) * (ncols + 1));
+    const count = (nrows + 1) * (ncols + 1);
+    const heights = new Float32Array(count);
+    this.vertT = new Float32Array(count);
+    this.vertD = new Float32Array(count);
     for (let j = 0; j <= ncols; j++) {
       const x = -this.sizeX / 2 + (j / ncols) * this.sizeX;
       for (let i = 0; i <= nrows; i++) {
         const z = -this.sizeZ / 2 + (i / nrows) * this.sizeZ;
-        heights[j * (nrows + 1) + i] = this.heightAt(x, z);
+        const v = j * (nrows + 1) + i;
+        const q = this.query(x, z);
+        heights[v] = this.profile(q, x, z);
+        this.vertT[v] = q.t;
+        this.vertD[v] = q.d;
       }
     }
     return heights;
@@ -324,8 +341,8 @@ export class Track {
     const vertCount = (nrows + 1) * (ncols + 1);
     const positions = new Float32Array(vertCount * 3);
     const colors = new Float32Array(vertCount * 3);
-    const tArr = new Float32Array(vertCount);
-    const dArr = new Float32Array(vertCount);
+    const tArr = this.vertT;
+    const dArr = this.vertD;
     const outer = this.ribbonOuter;
     const sand = new THREE.Color(0xdcc7a0);
     const sandDark = new THREE.Color(0xc4ad82);
@@ -338,9 +355,6 @@ export class Track {
         positions[v * 3] = x;
         positions[v * 3 + 1] = this.heights[v];
         positions[v * 3 + 2] = z;
-        const q = this.query(x, z);
-        tArr[v] = q.t;
-        dArr[v] = q.d;
         // Coarse patches of lighter and darker sand with crisp edges.
         const level = Math.floor(noise2(x * 0.45, z * 0.45) * 4) / 3;
         c.copy(sand).lerp(sandDark, level);
