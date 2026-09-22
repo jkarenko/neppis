@@ -51,6 +51,9 @@ const ON_TRACK_MARGIN = 0.15;
 const FLOOR_DEPTH = 0.08;
 const RIDGE_HEIGHT = 0.12;
 const RIDGE_HALF = 0.3;
+/** The ribbon reaches this far beyond the ridge, as a band of foot-smoothed sand hiding the seam. */
+const RIBBON_EXTRA = 0.45;
+const RIBBON_LIFT = 0.02;
 
 function hash2(x: number, y: number): number {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -284,12 +287,28 @@ export class Track {
     return group;
   }
 
+  /** Lateral offsets of the ribbon's vertex rows, ridge and smoothed band included. */
+  ribbonOffsets(): number[] {
+    const hw = this.halfWidth;
+    const outer = hw + RIDGE_HALF * 1.5;
+    const far = outer + RIBBON_EXTRA;
+    const half = [0, hw / 2, hw, hw + 0.15, hw + 0.3, outer, outer + 0.15, outer + 0.3, far];
+    return [...half.slice(1).reverse().map((d) => -d), ...half];
+  }
+
+  get ribbonOuter(): number {
+    return this.halfWidth + RIDGE_HALF * 1.5 + RIBBON_EXTRA;
+  }
+
   private createTerrainMesh(): THREE.Mesh {
     const { nrows, ncols } = this;
     const vertCount = (nrows + 1) * (ncols + 1);
     const positions = new Float32Array(vertCount * 3);
     const colors = new Float32Array(vertCount * 3);
+    const lateral = new Float32Array(vertCount);
     const outer = this.halfWidth + RIDGE_HALF * 1.5;
+    // Terrain quads touching this band are not rendered: the ribbon covers them.
+    const cut = outer + RIBBON_EXTRA - 0.25;
     const sand = new THREE.Color(0xdcc7a0);
     const sandDark = new THREE.Color(0xc4ad82);
     const floor = new THREE.Color(0x9d8562);
@@ -303,6 +322,7 @@ export class Track {
         positions[v * 3 + 1] = this.heights[v];
         positions[v * 3 + 2] = z;
         const q = this.query(x, z);
+        lateral[v] = Math.abs(q.d);
         if (Math.abs(q.d) < outer) {
           c.copy(floor);
         } else {
@@ -315,35 +335,27 @@ export class Track {
         colors[v * 3 + 2] = c.b;
       }
     }
-    const indices = new Uint32Array(nrows * ncols * 6);
-    let k = 0;
+    const indices: number[] = [];
     for (let j = 0; j < ncols; j++) {
       for (let i = 0; i < nrows; i++) {
         const a = j * (nrows + 1) + i;
         const b = a + 1;
         const cIdx = a + (nrows + 1);
         const d = cIdx + 1;
-        indices[k++] = a;
-        indices[k++] = b;
-        indices[k++] = cIdx;
-        indices[k++] = b;
-        indices[k++] = d;
-        indices[k++] = cIdx;
+        if (lateral[a] < cut || lateral[b] < cut || lateral[cIdx] < cut || lateral[d] < cut) continue;
+        indices.push(a, b, cIdx, b, d, cIdx);
       }
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setIndex(new THREE.BufferAttribute(indices, 1));
+    geo.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
     geo.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.95,
       metalness: 0,
       flatShading: true,
-      polygonOffset: true,
-      polygonOffsetFactor: 1,
-      polygonOffsetUnits: 1,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
@@ -352,21 +364,23 @@ export class Track {
 
   /** Tiny pixel texture across the track: ridge, damp floor, ridge. Nearest filtering keeps it crisp. */
   private createRibbonTexture(): THREE.CanvasTexture {
-    const w = 16;
-    const h = 16;
+    const w = 48;
+    const h = 24;
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d')!;
+    // Rows across the ribbon: 3 smoothed sand, 3 ridge, 12 damp floor, 3 ridge, 3 smoothed sand.
+    const sand = ['#dcc7a0', '#d4be96', '#e2cfaa'];
     const ridge = ['#e9d9b3', '#f1e3c0', '#e2d0a8'];
     const floor = ['#9d8562', '#a68d69', '#95805e'];
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const edge = y < 3 || y >= h - 3;
+        const fromEdge = Math.min(y, h - 1 - y);
+        const palette = fromEdge < 3 ? sand : fromEdge < 6 ? ridge : floor;
         const n = hash2(x, y);
-        const palette = edge ? ridge : floor;
         ctx.fillStyle = n < 0.72 ? palette[0] : n < 0.88 ? palette[1] : palette[2];
-        if (edge && (y === 1 || y === h - 2)) ctx.fillStyle = '#f4e8c8';
+        if (fromEdge === 4) ctx.fillStyle = '#f4e8c8';
         ctx.fillRect(x, y, 1, 1);
       }
     }
@@ -380,15 +394,14 @@ export class Track {
   }
 
   private createRibbonMesh(): THREE.Mesh {
-    const hw = this.halfWidth;
-    const outer = hw + RIDGE_HALF * 1.5;
-    const offsets = [-outer, -(hw + 0.3), -(hw + 0.15), -hw, -hw / 2, 0, hw / 2, hw, hw + 0.15, hw + 0.3, outer];
+    const outer = this.ribbonOuter;
+    const offsets = this.ribbonOffsets();
     const stride = 2; // one ring every 0.2 units
     const rings = Math.floor(this.samples.length / stride);
     const rows = offsets.length;
     const positions = new Float32Array(rings * rows * 3);
     const uvs = new Float32Array(rings * rows * 2);
-    const texRepeat = outer * 2; // square pixels: the texture spans the ribbon width
+    const texRepeat = outer * 2 * 3; // square pixels: the 48 x 24 texture spans the ribbon width
     for (let r = 0; r < rings; r++) {
       const idx = r * stride;
       const p = this.samples[idx];
@@ -401,7 +414,7 @@ export class Track {
         const z = p.z + rz * d;
         const v = r * rows + k;
         positions[v * 3] = x;
-        positions[v * 3 + 1] = this.heightAt(x, z) + 0.012;
+        positions[v * 3 + 1] = this.heightAt(x, z) + RIBBON_LIFT;
         positions[v * 3 + 2] = z;
         uvs[v * 2] = (idx * SAMPLE_STEP) / texRepeat;
         uvs[v * 2 + 1] = (d + outer) / (2 * outer);
@@ -416,12 +429,13 @@ export class Track {
         const b = a + 1;
         const c = r2 * rows + k;
         const d = c + 1;
+        // Wound so the normal points up: rows run to the right, rings along the track.
         indices[n++] = a;
-        indices[n++] = c;
-        indices[n++] = b;
         indices[n++] = b;
         indices[n++] = c;
+        indices[n++] = b;
         indices[n++] = d;
+        indices[n++] = c;
       }
     }
     const geo = new THREE.BufferGeometry();
@@ -462,10 +476,13 @@ export class Track {
     const square = this.def.width / cols;
     const geo = new THREE.PlaneGeometry(square * rowsN, this.def.width);
     geo.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+    const mesh = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    );
     const p = this.samples[0];
     const tg = this.tangents[0];
-    mesh.position.set(p.x, this.heightAt(p.x, p.z) + 0.02, p.z);
+    mesh.position.set(p.x, this.heightAt(p.x, p.z) + RIBBON_LIFT + 0.01, p.z);
     mesh.rotation.y = Math.atan2(-tg.z, tg.x);
     mesh.receiveShadow = true;
     return mesh;

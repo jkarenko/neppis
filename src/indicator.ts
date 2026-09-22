@@ -75,7 +75,7 @@ export class FlickIndicator {
 
     // Marker under the car: a grey disc while the drag is too short, a coloured triangle
     // pointing the way the car will go once it counts as a flick.
-    const discGeo = new THREE.CircleGeometry(0.6, 32);
+    const discGeo = new THREE.CircleGeometry(0.7, 32);
     discGeo.rotateX(-Math.PI / 2);
     this.disc = new THREE.Mesh(
       discGeo,
@@ -85,7 +85,7 @@ export class FlickIndicator {
     this.group.add(this.disc);
 
     const tri = new THREE.BufferGeometry();
-    tri.setAttribute('position', new THREE.Float32BufferAttribute([0.75, 0, 0, -0.3, 0, -0.45, -0.3, 0, 0.45], 3));
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([1.05, 0, 0, -0.45, 0, -0.55, -0.45, 0, 0.55], 3));
     tri.setIndex([0, 2, 1]);
     tri.computeVertexNormals();
     this.triangleMaterial = new THREE.MeshBasicMaterial({
@@ -106,7 +106,8 @@ export class FlickIndicator {
    * While the drag is too short to be a flick only the grey disc shows.
    */
   show(car: THREE.Vector3, dir: { x: number; z: number }, from: THREE.Vector3, power: number, valid: boolean): void {
-    const groundY = car.y - CAR.restHeight + 0.01;
+    // Just above the track ribbon, which itself floats 0.02 above the physics ground.
+    const groundY = car.y - CAR.restHeight + 0.06;
     this.disc.visible = !valid;
     this.disc.position.set(car.x, groundY, car.z);
     this.triangle.visible = valid;
