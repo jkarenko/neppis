@@ -504,6 +504,8 @@ export class Track {
         colors[v * 3 + 2] = c.b;
       }
     }
+    // A triangle is dropped only when all three corners are under the ribbon's outer band;
+    // one corner past the ribbon edge would otherwise leave a sliver of sky showing.
     const keep = this.ribbonOuter - OVERLAP * 0.8;
     const indices: number[] = [];
     for (let j = 0; j < ncols; j++) {
@@ -513,7 +515,7 @@ export class Track {
         const cIdx = a + (nrows + 1);
         const d = cIdx + 1;
         const tri = (p: number, q: number, r: number) => {
-          if ((lateral[p] + lateral[q] + lateral[r]) / 3 >= keep) indices.push(p, q, r);
+          if (Math.max(lateral[p], lateral[q], lateral[r]) >= keep) indices.push(p, q, r);
         };
         tri(a, b, cIdx);
         tri(b, d, cIdx);
