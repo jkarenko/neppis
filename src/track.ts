@@ -75,8 +75,14 @@ const RIDGE_HEIGHT = 0.12;
 const RIDGE_HALF = 0.3;
 /** The ribbon reaches this far beyond the ridge, as a band of foot-smoothed sand. */
 const RIBBON_EXTRA = 0.45;
-/** The coarse mesh is drawn this far in under the ribbon's outer band, so the seam is hidden. */
+/** The coarse surface is sunk over this distance in from the ribbon edge. */
 const OVERLAP = 0.3;
+/**
+ * The coarse mesh is cut per pixel this far inside the ribbon edge. Inside the cut nothing of it
+ * is drawn, so it can never poke through the ribbon; outside, every pixel is covered by one or
+ * the other. The margin covers the error of interpolating the lateral distance across a cell.
+ */
+const CUT_INSET = 0.1;
 /** Whichever surface is hidden under the other is sunk at least this far, so it is never touched. */
 const SINK = 0.03;
 
@@ -475,15 +481,21 @@ export class Track {
     });
   }
 
-  /** Vertex-coloured coarse sand: all triangles except those well under the ribbon. */
+  /**
+   * Vertex-coloured coarse sand. The colour's alpha is not opacity: it is the lateral distance
+   * past the cut line plus one half, unclamped, so it interpolates linearly across a triangle and
+   * an alpha test at 0.5 discards exactly the pixels inside the cut. Triangles wholly inside are
+   * left out altogether.
+   */
   coarseGeo(): GeoData {
     if (this.coarseGeoCache) return this.coarseGeoCache;
     const g = this.coarse;
     const { ncols, nrows } = g;
     const vertCount = (ncols + 1) * (nrows + 1);
     const positions = new Float32Array(vertCount * 3);
-    const colors = new Float32Array(vertCount * 3);
+    const colors = new Float32Array(vertCount * 4);
     const lateral = new Float32Array(vertCount);
+    const cut = this.ribbonOuter - CUT_INSET;
     const sand = new THREE.Color(0xdcc7a0);
     const sandDark = new THREE.Color(0xc4ad82);
     const c = new THREE.Color();
@@ -499,14 +511,13 @@ export class Track {
         // Coarse patches of lighter and darker sand with crisp edges.
         const level = Math.floor(noise2(x * 0.45, z * 0.45) * 4) / 3;
         c.copy(sand).lerp(sandDark, level);
-        colors[v * 3] = c.r;
-        colors[v * 3 + 1] = c.g;
-        colors[v * 3 + 2] = c.b;
+        colors[v * 4] = c.r;
+        colors[v * 4 + 1] = c.g;
+        colors[v * 4 + 2] = c.b;
+        colors[v * 4 + 3] = lateral[v] - cut + 0.5;
       }
     }
-    // A triangle is dropped only when all three corners are under the ribbon's outer band;
-    // one corner past the ribbon edge would otherwise leave a sliver of sky showing.
-    const keep = this.ribbonOuter - OVERLAP * 0.8;
+    const keep = cut;
     const indices: number[] = [];
     for (let j = 0; j < ncols; j++) {
       for (let i = 0; i < nrows; i++) {
@@ -559,11 +570,13 @@ export class Track {
     const g = this.coarseGeo();
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(g.colors!, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(g.colors!, 4));
     geo.setIndex(new THREE.BufferAttribute(g.indices, 1));
     geo.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
+      // See coarseGeo(): the vertex alpha encodes the cut line, this test applies it.
+      alphaTest: 0.5,
       roughness: 0.95,
       metalness: 0,
       flatShading: true,
