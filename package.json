@@ -11,6 +11,7 @@
     "calibrate": "tsx scripts/calibrate.ts",
     "simrace": "tsx scripts/simrace.ts",
     "terrain-risk": "tsx scripts/terrain-risk.ts",
+    "surfcheck": "tsx scripts/surfcheck.ts",
     "screenshot": "tsx scripts/screenshot.ts"
   },
   "dependencies": {
