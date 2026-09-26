@@ -1,8 +1,9 @@
-// Time the physics step with a car rolling on the track. Usage: tsx scripts/perf.ts [nofine]
-import { initPhysics } from '../src/physics.ts';
-import { Track, TRACKS } from '../src/track.ts';
-import { Car } from '../src/car.ts';
-import { PHYS_DT, TRACK_DETAIL } from '../src/config.ts';
+// Time the physics step with cars rolling on the real track.
+// Usage: tsx scripts/probes/perf.ts [nofine]   env: CARS, HZ, SOLVER_ITERS, FINE_CELL, NO_CHASSIS
+import { initPhysics } from '../../src/physics.ts';
+import { Track, TRACKS } from '../../src/track.ts';
+import { Car } from '../../src/car.ts';
+import { PHYS_DT, TRACK_DETAIL } from '../../src/config.ts';
 if (process.env.FINE_CELL) TRACK_DETAIL.fineCell = Number(process.env.FINE_CELL);
 
 const world = await initPhysics();

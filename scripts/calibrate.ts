@@ -1,18 +1,11 @@
 // Headless calibration: verifies the heightfield layout and measures flick distance / flip rate per power.
 // Run with: pnpm calibrate
 import { initPhysics, RAPIER } from '../src/physics.ts';
-import { Track, type TrackDef } from '../src/track.ts';
+import { Track } from '../src/track.ts';
+import { CAL_TRACK } from './lib/cal-track.ts';
 import { Car } from '../src/car.ts';
 import { PHYS_DT, WHEEL, FLICK, TRACK_DETAIL } from '../src/config.ts';
 if (process.env.FINE_CELL) TRACK_DETAIL.fineCell = Number(process.env.FINE_CELL);
-
-const CAL_TRACK: TrackDef = {
-  name: 'calibration',
-  width: 1.5,
-  area: [70, 30],
-  points: [[0, -8.5], [28, -8], [31, 0], [28, 8], [0, 8.5], [-28, 8], [-31, 0], [-28, -8]],
-  features: [],
-};
 
 async function main() {
   if (process.env.CRR) WHEEL.rollingCoefficient = Number(process.env.CRR);

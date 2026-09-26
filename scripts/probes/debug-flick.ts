@@ -1,12 +1,10 @@
-import { initPhysics, RAPIER } from '../src/physics.ts';
-import { Track, type TrackDef } from '../src/track.ts';
-import { Car } from '../src/car.ts';
-import { PHYS_DT } from '../src/config.ts';
-
-const CAL_TRACK: TrackDef = {
-  name: 'calibration', width: 1.5, area: [70, 30],
-  points: [[0, -8.5], [28, -8], [31, 0], [28, 8], [0, 8.5], [-28, 8], [-31, 0], [-28, -8]], features: [],
-};
+// Trace one flick step by step: position, velocity, spin and upright-ness every 50 ms.
+// Usage: tsx scripts/probes/debug-flick.ts [power 0..1]
+import { initPhysics, RAPIER } from '../../src/physics.ts';
+import { Track } from '../../src/track.ts';
+import { CAL_TRACK } from '../lib/cal-track.ts';
+import { Car } from '../../src/car.ts';
+import { PHYS_DT } from '../../src/config.ts';
 const p = Number(process.argv[2] ?? '0.5');
 const world = await initPhysics();
 const track = new Track(CAL_TRACK);
