@@ -3,7 +3,7 @@
 import { chromium } from 'playwright';
 
 const out = process.argv[2] ?? 'shot.png';
-const url = process.argv[3] ?? 'http://localhost:5173/';
+const url = process.argv[3] ?? 'http://localhost:5175/';
 const vpMatch = /^(\d+)x(\d+)(?:@(\d+(?:\.\d+)?))?$/.exec(process.env.VIEWPORT ?? '1280x800@1');
 if (!vpMatch) throw new Error(`VIEWPORT must be WxH or WxH@scale, got ${JSON.stringify(process.env.VIEWPORT)}`);
 const viewport = { width: Number(vpMatch[1]), height: Number(vpMatch[2]) };
