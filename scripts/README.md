@@ -10,7 +10,7 @@ All run through `tsx` without a browser. None ship with the game.
 | `pnpm simrace` | AI-vs-AI race to exercise the rules engine. |
 | `pnpm terrain-risk` | Flicks over the jump and into the ridge to see whether terrain alone causes kellis. |
 | `pnpm surfcheck` | Casts rays onto the track colliders and fails if any lands off the physics surface. |
-| `pnpm screenshot` | Screenshots the running dev server with Playwright. `VIEWPORT=WxH[@scale]` (default `1280x800@1`), `DRAG_PX`, `WAIT_MS`, `STATS=1`. |
+| `pnpm screenshot` | Screenshots the running dev server with Playwright. `VIEWPORT=iphone,ipad-landscape,1920x1080@2` takes presets or `WxH[@scale]`, `all` for every preset at 1x plus a contact sheet; default is `ipad-landscape@2`, the iPad's real resolution. `DRAG_PX`, `WAIT_MS`, `STATS=1`. |
 
 ## Probes (`probes/`, run by hand when something misbehaves)
 

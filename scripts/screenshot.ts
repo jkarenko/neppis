@@ -1,55 +1,138 @@
-// Headless screenshot of the running dev server. Usage: pnpm screenshot [out.png] [url]
-// VIEWPORT=WxH[@scale] picks the CSS viewport and device pixel ratio, e.g. VIEWPORT=393x852@3 for an iPhone 14 Pro.
-import { chromium } from 'playwright';
+// Headless screenshot(s) of the running dev server.
+//   pnpm screenshot [out.png] [url]
+//   VIEWPORT=iphone,ipad-landscape,1920x1080  comma-separated presets or WxH[@scale]; "all" = every preset.
+//   Default is the iPad at its real resolution (ipad-landscape@2). Named presets are CSS sizes at scale 1 unless
+//   you append @2 or @3, so "all" is a fast 1x layout check, not device-resolution detail.
+//   With several viewports the out path gets "-<viewport>" before the extension, or use {vp} in it, and a contact
+//   sheet of all of them is written as "-sheet". The game is loaded once per distinct scale and the viewport
+//   resized in place, so a full set takes about a minute.
+//   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
+import { readFile } from 'node:fs/promises';
+import { chromium, type Page } from 'playwright';
 
-const out = process.argv[2] ?? 'shot.png';
+const PRESETS: Record<string, string> = {
+  iphone: '393x852',
+  'iphone-landscape': '852x393',
+  ipad: '1032x1376',
+  'ipad-landscape': '1376x1032',
+  'macbook-air': '1470x956',
+  'desktop-1080p': '1920x1080',
+  'laptop-1366': '1366x768',
+  'laptop-1536': '1536x864',
+  'android-phone': '412x915',
+  'android-phone-landscape': '915x412',
+  'android-tablet': '800x1280',
+  'android-tablet-landscape': '1280x800',
+};
+
+interface Viewport { label: string; width: number; height: number; scale: number }
+
+function parseViewport(spec: string): Viewport {
+  const m = /^([a-z0-9-]+?)(?:@(\d+(?:\.\d+)?))?$/.exec(spec);
+  if (!m) throw new Error(`bad viewport ${JSON.stringify(spec)}`);
+  const [, name, scale] = m as unknown as [string, string, string | undefined];
+  const size = PRESETS[name] ?? name;
+  const s = /^(\d+)x(\d+)$/.exec(size);
+  if (!s) throw new Error(`viewport must be a preset (${Object.keys(PRESETS).join(', ')}) or WxH[@scale], got ${JSON.stringify(spec)}`);
+  return { label: spec, width: Number(s[1]), height: Number(s[2]), scale: Number(scale ?? 1) };
+}
+
+const specs = (process.env.VIEWPORT ?? 'ipad-landscape@2').split(',').map((s) => s.trim()).filter(Boolean);
+const viewports = specs.flatMap((s) => (s === 'all' ? Object.keys(PRESETS) : [s])).map(parseViewport);
+const outArg = process.argv[2] ?? 'shot.png';
 const url = process.argv[3] ?? 'http://localhost:5175/';
-const vpMatch = /^(\d+)x(\d+)(?:@(\d+(?:\.\d+)?))?$/.exec(process.env.VIEWPORT ?? '1280x800@1');
-if (!vpMatch) throw new Error(`VIEWPORT must be WxH or WxH@scale, got ${JSON.stringify(process.env.VIEWPORT)}`);
-const viewport = { width: Number(vpMatch[1]), height: Number(vpMatch[2]) };
-const deviceScaleFactor = Number(vpMatch[3] ?? 1);
-// The camera targets the current car, so it sits at the viewport centre; flicks start there.
-const cx = viewport.width / 2;
-const cy = viewport.height / 2;
-const browser = await chromium.launch({
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
-const page = await browser.newPage({ viewport, deviceScaleFactor });
-page.on('console', (m) => {
-  if (m.type() === 'error' || m.type() === 'warning') console.log(`[browser ${m.type()}] ${m.text()}`);
-});
-page.on('pageerror', (e) => console.log(`[browser pageerror] ${e.message}`));
-await page.goto(url, { waitUntil: 'networkidle' });
-await page.waitForTimeout(1500);
-await page.click('#start');
-await page.waitForTimeout(Number(process.env.WAIT_MS ?? 2500));
-// Optional: hold a flick drag while shooting.
 const dragPx = Number(process.env.DRAG_PX ?? 0);
-if (dragPx > 0) {
+
+function outPath(label: string): string {
+  if (viewports.length === 1 && !outArg.includes('{vp}')) return outArg;
+  if (outArg.includes('{vp}')) return outArg.replaceAll('{vp}', label);
+  return outArg.replace(/(\.[a-z]+)?$/i, `-${label}$1`);
+}
+
+/** One page with every capture scaled into a labelled grid, so a whole set can be judged at a glance. */
+async function contactSheet(shots: { label: string; path: string }[]): Promise<string> {
+  const tiles = await Promise.all(
+    shots.map(async (s) => {
+      const data = (await readFile(s.path)).toString('base64');
+      return `<figure><figcaption>${s.label}</figcaption><img src="data:image/png;base64,${data}"></figure>`;
+    }),
+  );
+  const cols = Math.min(4, shots.length);
+  const page = await browser.newPage({ viewport: { width: cols * 472 + 12, height: 800 }, deviceScaleFactor: 1 });
+  await page.setContent(`<style>
+    body { margin: 12px; background: #e9e7e2; font: 14px system-ui, sans-serif; color: #222; }
+    main { display: grid; grid-template-columns: repeat(${cols}, 460px); gap: 12px; }
+    figure { margin: 0; } figcaption { margin-bottom: 4px; }
+    img { display: block; max-width: 460px; max-height: 276px; margin: 0 auto; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  </style><main>${tiles.join('')}</main>`);
+  const out = outPath('sheet');
+  await page.screenshot({ path: out, fullPage: true });
+  await page.close();
+  return out;
+}
+
+async function flick(page: Page, vp: Viewport, distance: number, stepMs: number): Promise<void> {
+  const cx = vp.width / 2;
+  const cy = vp.height / 2;
   await page.mouse.move(cx, cy);
   await page.mouse.down();
   for (let i = 1; i <= 10; i++) {
-    await page.mouse.move(cx, cy + (dragPx * i) / 10);
-    await page.waitForTimeout(30);
+    await page.mouse.move(cx, cy + (distance * i) / 10);
+    await page.waitForTimeout(stepMs);
   }
-  await page.waitForTimeout(300);
 }
-await page.screenshot({ path: out });
-if (dragPx > 0) await page.mouse.up();
-// With STATS=1: flick, then sample the stats overlay while the car is moving and after it stops.
-if (process.env.STATS) {
-  const read = async (label: string) => console.log(`--- ${label}\n` + (await page.textContent('#stats')));
-  await read('idle');
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  for (let i = 1; i <= 10; i++) { await page.mouse.move(cx, cy + 16 * i); await page.waitForTimeout(20); }
-  await page.mouse.up();
-  await page.waitForTimeout(700);
-  await read('moving (0.7 s after flick)');
-  await page.waitForTimeout(1200);
-  await read('moving (1.9 s after flick)');
-  await page.waitForTimeout(4000);
-  await read('after');
+
+const browser = await chromium.launch({
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+});
+
+const shots: { label: string; path: string }[] = [];
+const byScale = new Map<number, Viewport[]>();
+for (const vp of viewports) byScale.set(vp.scale, [...(byScale.get(vp.scale) ?? []), vp]);
+
+for (const [scale, group] of byScale) {
+  const first = group[0]!;
+  const page = await browser.newPage({ viewport: { width: first.width, height: first.height }, deviceScaleFactor: scale });
+  page.on('console', (m) => {
+    if (m.type() === 'error' || m.type() === 'warning') console.log(`[browser ${m.type()}] ${m.text()}`);
+  });
+  page.on('pageerror', (e) => console.log(`[browser pageerror] ${e.message}`));
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  await page.click('#start');
+  await page.waitForTimeout(Number(process.env.WAIT_MS ?? 2500));
+
+  for (const vp of group) {
+    if (vp !== first) {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.waitForTimeout(500); // let the renderer pick up the resize
+    }
+    if (dragPx > 0) {
+      await flick(page, vp, dragPx, 30);
+      await page.waitForTimeout(300);
+    }
+    const out = outPath(vp.label);
+    await page.screenshot({ path: out });
+    shots.push({ label: `${vp.label} · ${vp.width}×${vp.height}@${vp.scale}`, path: out });
+    if (dragPx > 0) await page.mouse.up();
+    console.log('saved', out, `${vp.width}x${vp.height}@${vp.scale}`);
+  }
+
+  // With STATS=1: flick, then sample the stats overlay while the car is moving and after it stops (last viewport).
+  if (process.env.STATS) {
+    const last = group[group.length - 1]!;
+    const read = async (label: string) => console.log(`--- ${label}\n` + (await page.textContent('#stats')));
+    await read('idle');
+    await flick(page, last, 160, 20);
+    await page.mouse.up();
+    await page.waitForTimeout(700);
+    await read('moving (0.7 s after flick)');
+    await page.waitForTimeout(1200);
+    await read('moving (1.9 s after flick)');
+    await page.waitForTimeout(4000);
+    await read('after');
+  }
+  await page.close();
 }
-console.log('saved', out);
+if (shots.length > 1) console.log('saved', await contactSheet(shots));
 await browser.close();
