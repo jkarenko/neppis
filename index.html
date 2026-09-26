@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <title>Neppis</title>
+    <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/style.css" />
+    <script>
+      // Reveal the start screen once Inter is in, or after 2 s if it never arrives.
+      Promise.race([document.fonts.load('1em "Inter"'), new Promise((r) => setTimeout(r, 2000))])
+        .finally(() => document.documentElement.classList.add('fonts-ready'));
+    </script>
   </head>
   <body>
     <div id="app"></div>

@@ -1,10 +1,20 @@
+/* Inter Latin variable (SIL OFL, see public/fonts/LICENSE-Inter.txt). Shipped so every client renders the HUD identically. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
 :root {
   color-scheme: light;
   --panel: rgba(20, 24, 32, 0.78);
   --text: #f4f1ea;
   --muted: #b9b4a8;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+/* Keep the start screen hidden until Inter has loaded (index.html), so no text is ever painted in a fallback font. */
+html:not(.fonts-ready) #setup { visibility: hidden; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
