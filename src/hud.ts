@@ -9,6 +9,8 @@ function hex(c: number): string {
 
 export class Hud {
   private readonly players = document.getElementById('players')!;
+  private readonly turn = document.getElementById('turn')!;
+  private readonly finger = document.getElementById('finger')!;
   private readonly message = document.getElementById('message')!;
   private readonly power = document.getElementById('power')!;
   private readonly setup = document.getElementById('setup')!;
@@ -67,19 +69,39 @@ export class Hud {
   }
 
   render(game: Game): void {
-    const flicks = game.rules.flicksPerTurn;
+    const current = game.phase !== 'finished' ? game.current : null;
     this.players.innerHTML = game.players
       .map((p) => {
-        const isCurrent = game.current === p && game.phase !== 'finished';
-        const dots = isCurrent ? '●'.repeat(game.flicksLeft) + '○'.repeat(Math.max(0, flicks - game.flicksLeft)) : '';
+        const isCurrent = current === p;
         const stat = p.finished ? `P${p.place}` : `lap ${Math.max(0, p.lap) + 1}/${game.rules.laps}`;
-        return `<div class="player${isCurrent ? ' current' : ''}">
+        return `<div class="player${isCurrent ? ' current' : ''}" style="--c:${hex(p.color)}">
           <span class="dot" style="background:${hex(p.color)}"></span>
           <span class="name">${p.name}${p.ai ? ' <span class="stat">(AI)</span>' : ''}</span>
-          <span class="stat">${stat} <span class="flicks">${dots}</span></span>
+          <span class="stat">${stat}</span>
         </div>`;
       })
       .join('');
+
+    // Flicks left, top centre, in the current car's colour. Whose turn it is comes from the colour alone.
+    if (!current) {
+      this.turn.hidden = true;
+      return;
+    }
+    const chevron = (used: boolean) => `<svg viewBox="0 0 18 18"${used ? ' class="used"' : ''}><path d="M4 6 L9 12 L14 6"/></svg>`;
+    this.turn.style.setProperty('--c', hex(current.color));
+    this.turn.innerHTML = Array.from({ length: game.rules.flicksPerTurn }, (_, i) => chevron(i >= game.flicksLeft)).join('');
+    this.turn.hidden = false;
+  }
+
+  /** Place the first-turn finger cue at a screen position, or hide it. */
+  showFinger(at: { x: number; y: number } | null): void {
+    if (!at) {
+      this.finger.hidden = true;
+      return;
+    }
+    this.finger.hidden = false;
+    this.finger.style.left = `${at.x}px`;
+    this.finger.style.top = `${at.y}px`;
   }
 
   say(text: string, ms = 2600): void {

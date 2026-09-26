@@ -4,6 +4,7 @@ import { initPhysics } from './physics.ts';
 import { Track, TRACKS } from './track.ts';
 import { Game, type Player } from './game.ts';
 import { FlickIndicator } from './indicator.ts';
+import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
 import { Hud } from './hud.ts';
 import { DEFAULT_RULES, MAX_STEPS_PER_FRAME, PHYS_DT } from './config.ts';
@@ -50,6 +51,8 @@ async function main(): Promise<void> {
 
   const indicator = new FlickIndicator();
   scene.add(indicator.group);
+  const cue = new TurnCue();
+  scene.add(cue.group);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
@@ -64,6 +67,7 @@ async function main(): Promise<void> {
 
   const hud = new Hud();
   const rules = { ...DEFAULT_RULES };
+  const timer = new THREE.Timer();
 
   let camAnim: { fromPos: THREE.Vector3; toPos: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; t: number } | null = null;
 
@@ -76,14 +80,34 @@ async function main(): Promise<void> {
     camAnim = { fromPos: camera.position.clone(), toPos, fromTarget: controls.target.clone(), toTarget, t: 0 };
   }
 
+  // The ring under the car marks a human player's turn for as long as it lasts. The finger drag is shown on each
+  // human's first turn of a race, once the camera has settled on the car, until they start dragging.
+  const tutored = new Set<number>();
+  let fingerAt: number | null = null; // elapsed time at which the finger should appear
+  function endFinger(): void {
+    fingerAt = null;
+    hud.showFinger(null);
+  }
+  function endCue(): void {
+    cue.hide();
+    endFinger();
+  }
+
   const game = new Game(world, track, scene, rules, {
     message: (text, ms) => hud.say(text, ms),
     turnStart: (p) => {
       frameCar(p);
-      hud.say(`${p.name}'s turn`, 1400);
+      endCue();
+      if (p.ai) return;
+      cue.show(p.color);
+      if (!tutored.has(p.id)) {
+        tutored.add(p.id);
+        fingerAt = timer.getElapsed() + 1.1; // the camera glide takes 0.7 s
+      }
     },
     flick: () => {
       camAnim = null;
+      endFinger();
     },
     changed: () => hud.render(game),
     raceOver: (placings) => {
@@ -93,6 +117,8 @@ async function main(): Promise<void> {
 
   function startRace(setups: { name: string; ai: boolean }[], laps: number): void {
     rules.laps = laps;
+    tutored.clear();
+    endCue();
     game.start(setups);
   }
 
@@ -104,6 +130,7 @@ async function main(): Promise<void> {
         hud.showPower(null);
         return;
       }
+      endFinger();
       // Turning the nose before a flick is allowed, so the car simply faces where you aim.
       game.rotateCurrent(Math.atan2(-aim.dir.z, aim.dir.x));
       indicator.show(game.current.car.position, aim.dir, aim.current, aim.power, aim.valid);
@@ -119,6 +146,7 @@ async function main(): Promise<void> {
   document.getElementById('newRace')!.addEventListener('click', () => {
     game.clear();
     indicator.hide();
+    endCue();
     hud.render(game);
     hud.showSetup(startRace);
   });
@@ -141,7 +169,6 @@ async function main(): Promise<void> {
   }
   const acc = { frames: 0, physMs: 0, renderMs: 0, steps: 0, time: 0 };
 
-  const timer = new THREE.Timer();
   let accumulator = 0;
   renderer.setAnimationLoop(() => {
     timer.update();
@@ -173,6 +200,14 @@ async function main(): Promise<void> {
     controls.update();
 
     indicator.update(timer.getElapsed());
+    if (cue.visible && game.current) {
+      const pos = game.current.car.position;
+      cue.update(pos, timer.getElapsed());
+      if (fingerAt !== null && timer.getElapsed() >= fingerAt) {
+        const projected = pos.clone().project(camera);
+        hud.showFinger({ x: ((projected.x + 1) / 2) * window.innerWidth, y: ((1 - projected.y) / 2) * window.innerHeight });
+      }
+    }
     renderer.render(scene, camera);
     if (stats) {
       acc.renderMs += performance.now() - tRender;

@@ -21,15 +21,48 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #hud { position: fixed; inset: 0; pointer-events: none; color: var(--text); }
 #players { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); background: var(--panel); border-radius: 12px; padding: 10px 12px; min-width: 190px; backdrop-filter: blur(6px); }
 .player { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; font-size: 14px; }
-.player.current { background: rgba(255, 255, 255, 0.14); }
+.player.current { background: color-mix(in srgb, var(--c) 30%, transparent); box-shadow: inset 3px 0 0 var(--c); }
 .player .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.7); }
 .player .name { white-space: nowrap; }
 .player .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
-.player .flicks { letter-spacing: 2px; color: #ffd166; }
-#message { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: var(--panel); padding: 8px 16px; border-radius: 999px; font-size: 15px; opacity: 0; transition: opacity 0.25s; max-width: 80vw; text-align: center; }
+/* Flicks left for the current player: chevrons in the car's colour, echoing the flick ribbon. */
+#turn { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 7px 12px; border-radius: 999px; background: var(--panel); backdrop-filter: blur(6px); }
+#turn[hidden] { display: none; }
+#turn svg { width: 18px; height: 18px; display: block; }
+#turn svg path { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#turn svg.used path { stroke: color-mix(in srgb, var(--c) 35%, transparent); }
+#message { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 44px); left: 50%; transform: translateX(-50%); background: var(--panel); padding: 8px 16px; border-radius: 999px; font-size: 15px; opacity: 0; transition: opacity 0.25s; max-width: 80vw; text-align: center; }
 #message.show { opacity: 1; }
 #power { position: absolute; right: max(14px, env(safe-area-inset-right)); top: max(14px, env(safe-area-inset-top)); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); background: var(--panel); padding: 6px 10px; border-radius: 999px; }
-#hint { position: absolute; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(20,24,32,0.75); text-align: center; padding: 0 12px; }
+/* First-turn cue: a finger drags down from the car, leaving a swipe trail that fades behind it. The container sits
+   at the car's screen position (set each frame); children are placed relative to it. One 1.6 s cycle: appear at the
+   car, drag down, fade out in place, restart. */
+#finger { position: absolute; left: 0; top: 0; width: 0; height: 0; --travel: min(110px, 22vh); }
+#finger[hidden] { display: none; }
+#finger .hand { position: absolute; left: -18px; top: -4px; width: 40px; height: 48px; animation: fingerDrag 1.6s ease-in-out infinite; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+#finger .trail { position: absolute; left: -4px; top: 0; width: 8px; height: var(--travel); border-radius: 4px; transform-origin: top center; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.95) 100%); box-shadow: 0 0 6px rgba(255,255,255,0.45); animation: fingerTrail 1.6s ease-in-out infinite; }
+#finger .touch { position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); background: rgba(255,255,255,0.25); animation: fingerTouch 1.6s ease-in-out infinite; }
+@keyframes fingerDrag {
+  0% { transform: translateY(0) scale(0.9); opacity: 0; }
+  15% { transform: translateY(0) scale(1); opacity: 1; }
+  70% { transform: translateY(var(--travel)) scale(1); opacity: 1; }
+  88% { transform: translateY(var(--travel)) scale(1); opacity: 0; }
+  100% { transform: translateY(var(--travel)) scale(1); opacity: 0; }
+}
+@keyframes fingerTrail {
+  0%, 15% { transform: scaleY(0); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: scaleY(1); opacity: 1; }
+  82% { transform: scaleY(1); opacity: 0; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+@keyframes fingerTouch {
+  0% { transform: scale(0.6); opacity: 0; }
+  15% { transform: scale(1); opacity: 1; }
+  45% { opacity: 0.6; }
+  70% { transform: scale(1); opacity: 0.35; }
+  82%, 100% { opacity: 0; }
+}
 #newRace { pointer-events: auto; position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); background: var(--panel); color: var(--text); border: 0; border-radius: 999px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
 #setup, #results { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15, 20, 30, 0.55); backdrop-filter: blur(4px); z-index: 10; }
 #setup[hidden], #results[hidden] { display: none; }
@@ -51,7 +84,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #results li { margin: 4px 0; }
 #results button { width: 100%; padding: 10px; border: 0; border-radius: 10px; background: #1d2430; color: #fff; font-size: 15px; }
 @media (max-width: 600px) {
-  #hint { display: none; }
   #players { min-width: 150px; padding: 8px; }
   .player { font-size: 13px; }
 }
