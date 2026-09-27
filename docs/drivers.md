@@ -86,7 +86,42 @@ the line would cross, by jumpCaution → target shaded to the inside of its bend
 line pulled into the 45° turn wedge (`gameplay.md` section 3), with the power cut to what stays on
 the track along the pulled line → aim and power noise. Every knob is data; no per-driver code.
 
-`pnpm simrace roster` races the whole ladder in heats of six, everyone twice, and prints races,
-wins, mean place, flips, tips, off-tracks and flicks per lap per driver. That table is how the
-ladder gets tuned: mean place should fall as the ladder number rises.
+`pnpm simrace roster [heats]` races the whole ladder in heats of six and prints races, wins, mean
+place, flips, tips, off-tracks and flicks per lap per driver. That table is how the ladder gets
+tuned. Mean place depends on who else was in the heat and needs many heats to settle; flicks per
+lap is the steadier pace measure and should fall as the ladder number rises.
+
+Baseline, 2026-09-27, `SEED=11 pnpm simrace roster 28` on Hietsu, eight races per driver:
+
+| # | driver | wins | mean place | flips | off | flicks/lap |
+|---|---|---|---|---|---|---|
+| 1 | Rando Nervous | 0 | 5.13 | 0 | 1 | 40.6 |
+| 2 | Hanami Cola | 1 | 3.13 | 0 | 0 | 42.6 |
+| 3 | Steady Betty | 1 | 4.13 | 0 | 0 | 42.4 |
+| 4 | Callow Rollover | 2 | 3.13 | 0 | 1 | 34.1 |
+| 5 | Gene Lazy | 1 | 3.50 | 0 | 0 | 35.0 |
+| 6 | John Hangover | 0 | 5.38 | 0 | 1 | 38.8 |
+| 7 | Checky Stalwart | 0 | 4.25 | 0 | 0 | 31.9 |
+| 8 | Nudge Manhandle | 3 | 3.13 | 0 | 1 | 30.1 |
+| 9 | Mash Overstep | 0 | 4.00 | 0 | 0 | 36.0 |
+| 10 | Killian Clonkin | 0 | 4.13 | 1 | 0 | 30.5 |
+| 11 | Mike Rometer | 3 | 2.75 | 0 | 0 | 30.5 |
+| 12 | Denny Ricochet | 1 | 3.75 | 2 | 2 | 33.6 |
+| 13 | Dark Web | 1 | 3.38 | 0 | 0 | 34.3 |
+| 14 | Nicky Louder | 3 | 2.75 | 0 | 0 | 31.0 |
+| 15 | Bruise Hammerton | 1 | 3.38 | 1 | 1 | 39.5 |
+| 16 | Bea Line | 1 | 3.38 | 0 | 0 | 30.3 |
+| 17 | Bastion Vette | 1 | 2.88 | 0 | 0 | 29.8 |
+| 18 | Rufus Turner | 1 | 3.88 | 3 | 2 | 31.0 |
+| 19 | Airtime Sender | 4 | 2.38 | 0 | 0 | 31.9 |
+| 20 | Harald Frost | 1 | 3.25 | 0 | 0 | 31.8 |
+| 21 | The Dune | 3 | 1.88 | 0 | 0 | 28.9 |
+
+Reading it: the ends hold (the bottom three lap in 40 or more flicks, the top five in 29 to 32) and
+the middle is a jumble within the noise of eight races. Two outliers to look at next time the
+ladder is tuned: Bruise Hammerton is far slower than his stats say, and Callow Rollover faster.
+Flips are rare on Hietsu for everyone, 7 in 5715 flicks, so nerve currently costs distance rather
+than roofs; the jump at 0.27 is not steep enough to punish full power. The pace numbers say the
+whole field is slow, about 30 flicks for a 113-unit lap, because any wheel on the ridge stops the
+car; that is the track, not the drivers.
 
