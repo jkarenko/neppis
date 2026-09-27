@@ -49,7 +49,7 @@ export const FLICK = {
    * band, then a sigmoid drop centred at `halfDeg` (where half the range is gone) with width `widthDeg`, down to
    * `edgePower` at the wedge edge. See maxPowerForTurn in ai.ts.
    */
-  turnPower: { halfDeg: 22, widthDeg: 5, edgePower: 0.35 },
+  turnPower: { halfDeg: 15, widthDeg: 4, edgePower: 0.35 },
 };
 
 export const WHEEL = {

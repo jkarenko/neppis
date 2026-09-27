@@ -3,32 +3,45 @@ import { CAR, FLICK } from './config.ts';
 import { maxPowerForTurn } from './ai.ts';
 import { powerColor } from './indicator.ts';
 
+/** Ground height under a point; the cue conforms its wedge to it. */
+export type HeightAt = (x: number, z: number) => number;
+
+const WEDGE_RADIUS = 2.4;
+const WEDGE_RINGS = 12;
+const WEDGE_SEGMENTS = 48;
+
 /**
- * A 90° sector on the ground in front of the car: the headings a flick may take, each coloured by the most power it
- * may have there (the ribbon's own scale: red straight ahead, blue at the edges). The centre vertex takes the
- * straight-ahead colour, the rim vertices their angle's colour; the fan triangles blend between them.
+ * A 90° sector in front of the car: the headings a flick may take, each coloured by the most power it may have
+ * there (the ribbon's own scale: red straight ahead, blue at the edges). It is a grid of rings and slices so that
+ * every vertex can take its own angle's colour (the colour runs the full length of a radius) and its own ground
+ * height (the wedge climbs the ridge and the jump instead of vanishing under them). Positions are in the wedge's
+ * local frame, x along the centre line; `conform` sets the heights for a car position and heading.
  */
-function sector(radius: number, halfAngle: number, segments = 48): THREE.BufferGeometry {
-  const pts = [0, 0, 0];
+function sector(halfAngle: number): THREE.BufferGeometry {
+  const pts: number[] = [];
   const cols: number[] = [];
   const c = new THREE.Color();
-  const push = (angle: number) => {
-    powerColor(maxPowerForTurn(angle), c);
-    cols.push(c.r, c.g, c.b);
-  };
-  push(0);
-  for (let i = 0; i <= segments; i++) {
-    const a = -halfAngle + (2 * halfAngle * i) / segments;
-    pts.push(Math.cos(a) * radius, 0, -Math.sin(a) * radius);
-    push(a);
+  for (let r = 0; r <= WEDGE_RINGS; r++) {
+    const radius = (WEDGE_RADIUS * r) / WEDGE_RINGS;
+    for (let i = 0; i <= WEDGE_SEGMENTS; i++) {
+      const a = -halfAngle + (2 * halfAngle * i) / WEDGE_SEGMENTS;
+      pts.push(Math.cos(a) * radius, 0, -Math.sin(a) * radius);
+      powerColor(maxPowerForTurn(a), c);
+      cols.push(c.r, c.g, c.b);
+    }
   }
   const idx: number[] = [];
-  for (let i = 1; i <= segments; i++) idx.push(0, i + 1, i);
+  const row = WEDGE_SEGMENTS + 1;
+  for (let r = 0; r < WEDGE_RINGS; r++) {
+    for (let i = 0; i < WEDGE_SEGMENTS; i++) {
+      const a = r * row + i;
+      idx.push(a, a + 1, a + row, a + 1, a + row + 1, a + row);
+    }
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
   g.setIndex(idx);
-  g.computeVertexNormals();
   return g;
 }
 
@@ -43,10 +56,14 @@ export class TurnCue {
   private readonly ringMaterial: THREE.MeshBasicMaterial;
   private readonly glowMaterial: THREE.MeshBasicMaterial;
   private readonly wedge: THREE.Group;
+  private readonly wedgeGeo: THREE.BufferGeometry;
+  private readonly rimGeo: THREE.BufferGeometry;
   private readonly wedgeFill: THREE.MeshBasicMaterial;
   private readonly wedgeRim: THREE.LineBasicMaterial;
   private active = false;
   private wedgeOn = false;
+  /** Where the wedge was last conformed, so the heights are resampled only when the car or heading changes. */
+  private conformed = { x: NaN, z: NaN, yaw: NaN };
 
   constructor() {
     this.group = new THREE.Group();
@@ -81,12 +98,21 @@ export class TurnCue {
     this.group.visible = false;
 
     const halfAngle = (FLICK.maxTurnDeg * Math.PI) / 180;
-    this.wedgeFill = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide });
-    const fill = new THREE.Mesh(sector(2.4, halfAngle), this.wedgeFill);
+    this.wedgeFill = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide });
+    this.wedgeGeo = sector(halfAngle);
+    const fill = new THREE.Mesh(this.wedgeGeo, this.wedgeFill);
     fill.renderOrder = 7;
     this.wedgeRim = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
-    const rimPts: THREE.Vector3[] = [new THREE.Vector3(Math.cos(halfAngle) * 2.4, 0, Math.sin(halfAngle) * 2.4), new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(halfAngle) * 2.4, 0, -Math.sin(halfAngle) * 2.4)];
-    const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rimPts), this.wedgeRim);
+    // The rim follows the two edges out and the arc back, so it rides the ground with the fill.
+    const rimPts: THREE.Vector3[] = [];
+    for (let r = WEDGE_RINGS; r >= 0; r--) rimPts.push(new THREE.Vector3(Math.cos(-halfAngle) * (WEDGE_RADIUS * r) / WEDGE_RINGS, 0, -Math.sin(-halfAngle) * (WEDGE_RADIUS * r) / WEDGE_RINGS));
+    for (let r = 1; r <= WEDGE_RINGS; r++) rimPts.push(new THREE.Vector3(Math.cos(halfAngle) * (WEDGE_RADIUS * r) / WEDGE_RINGS, 0, -Math.sin(halfAngle) * (WEDGE_RADIUS * r) / WEDGE_RINGS));
+    for (let i = WEDGE_SEGMENTS - 1; i >= 0; i--) {
+      const a = -halfAngle + (2 * halfAngle * i) / WEDGE_SEGMENTS;
+      rimPts.push(new THREE.Vector3(Math.cos(a) * WEDGE_RADIUS, 0, -Math.sin(a) * WEDGE_RADIUS));
+    }
+    this.rimGeo = new THREE.BufferGeometry().setFromPoints(rimPts);
+    const rim = new THREE.Line(this.rimGeo, this.wedgeRim);
     rim.renderOrder = 8;
     this.wedge = new THREE.Group();
     this.wedge.add(fill, rim);
@@ -103,14 +129,39 @@ export class TurnCue {
    * driver's colour. `pushing` means the finger asks for more turn than the wedge gives: the fill brightens and the
    * rim goes white, a change that reads in every car colour.
    */
-  showWedge(color: number, car: THREE.Vector3, yaw: number, pushing = false): void {
-    this.wedgeFill.opacity = pushing ? 0.5 : 0.3;
+  showWedge(color: number, car: THREE.Vector3, yaw: number, pushing = false, heightAt?: HeightAt): void {
+    this.wedgeFill.opacity = pushing ? 0.5 : 0.32;
     this.wedgeRim.color.set(pushing ? 0xffffff : color);
     this.wedgeRim.opacity = pushing ? 1 : 0.85;
-    this.wedge.position.set(car.x, car.y - CAR.restHeight + 0.045, car.z);
+    this.wedge.position.set(car.x, 0, car.z);
     this.wedge.rotation.y = yaw;
+    if (heightAt) this.conform(car, yaw, heightAt);
+    else this.wedge.position.y = car.y - CAR.restHeight + 0.045;
     this.wedge.visible = true;
     this.wedgeOn = true;
+  }
+
+  /** Lift every vertex to the ground under it, a little above so the fill sits on the sand and the ridge. */
+  private conform(car: THREE.Vector3, yaw: number, heightAt: HeightAt): void {
+    if (this.conformed.x === car.x && this.conformed.z === car.z && this.conformed.yaw === yaw) return;
+    this.conformed = { x: car.x, z: car.z, yaw };
+    const cos = Math.cos(yaw);
+    const sin = Math.sin(yaw);
+    const lift = (geo: THREE.BufferGeometry) => {
+      const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) {
+        const lx = pos.getX(i);
+        const lz = pos.getZ(i);
+        // Local to world with the wedge's rotation about Y (three.js: x' = x cos + z sin, z' = -x sin + z cos).
+        const wx = car.x + lx * cos + lz * sin;
+        const wz = car.z - lx * sin + lz * cos;
+        pos.setY(i, heightAt(wx, wz) + 0.05);
+      }
+      pos.needsUpdate = true;
+      geo.computeBoundingSphere();
+    };
+    lift(this.wedgeGeo);
+    lift(this.rimGeo);
   }
 
   hideWedge(): void {

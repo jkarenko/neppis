@@ -6,6 +6,9 @@ import { DRIVER_BY_ID, ROSTER, TIERS } from './roster.ts';
 import { driverCard, humanFace } from './kit.ts';
 import { portrait } from './portraits.ts';
 import { SetupScreen } from './setup.ts';
+import { maxPowerForTurn } from './ai.ts';
+import { powerColor } from './indicator.ts';
+import { FLICK } from './config.ts';
 import { canVibrate, getSetting, setSetting, type SettingKey } from './settings.ts';
 
 export type Screen = 'menu' | 'setup' | 'opponents' | 'settings' | 'howto' | 'race' | 'pause' | 'results';
@@ -65,6 +68,7 @@ export class App {
     this.el('resultsMenu').onclick = () => this.quit();
     for (const b of document.querySelectorAll<HTMLButtonElement>('.screen .back')) b.onclick = () => this.back();
     this.renderRoster();
+    this.renderHowtoWedge();
     for (const sw of document.querySelectorAll<HTMLButtonElement>('#settings .switch')) {
       const key = sw.dataset.setting as SettingKey;
       sw.setAttribute('aria-checked', String(getSetting(key)));
@@ -102,6 +106,26 @@ export class App {
     this.lastGrid = { setups, laps };
     this.go('race');
     this.hooks.startRace(setups, laps);
+  }
+
+  /** The tutorial's wedge: a fan of slices coloured by the game's own power-by-angle curve, apex at (40, 60). */
+  private renderHowtoWedge(): void {
+    const half = (FLICK.maxTurnDeg * Math.PI) / 180;
+    const n = 36;
+    const r = 80;
+    const ax = 40;
+    const slices: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const a0 = -half + (2 * half * i) / n;
+      const a1 = -half + (2 * half * (i + 1)) / n;
+      const mid = (a0 + a1) / 2;
+      const col = '#' + powerColor(maxPowerForTurn(mid)).getHexString();
+      // A hair of overlap so the slices do not show seams.
+      const b0 = a0 - 0.004;
+      const b1 = a1 + 0.004;
+      slices.push(`<path d="M${ax} 60L${(ax + r * Math.cos(b0)).toFixed(1)} ${(60 + r * Math.sin(b0)).toFixed(1)}A${r} ${r} 0 0 1 ${(ax + r * Math.cos(b1)).toFixed(1)} ${(60 + r * Math.sin(b1)).toFixed(1)}Z" fill="${col}"/>`);
+    }
+    this.el('howtoWedge').innerHTML = slices.join('');
   }
 
   /** The Opponents screen: the whole ladder by tier, cards flip to their back, "Race this one" pre-fills setup. */

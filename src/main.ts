@@ -192,7 +192,7 @@ async function main(): Promise<void> {
       const pos = game.current.car.position;
       const reach = Math.hypot(aim.current.x - pos.x, aim.current.z - pos.z);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(reach));
-      cue.showWedge(game.current.color, pos, game.restYaw, clamped);
+      cue.showWedge(game.current.color, pos, game.restYaw, clamped, game.heightAt);
       // The ribbon shows the power the flick will actually get: the drag, capped by the turn angle.
       indicator.show(pos, dir, from, Math.min(aim.power, game.maxPowerNow(yaw)), aim.valid);
     },
@@ -307,7 +307,7 @@ async function main(): Promise<void> {
       endFinger();
       game.rotateCurrent(yaw);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(0.6 + 3 * power));
-      cue.showWedge(game.current.color, pos, game.restYaw, clamped);
+      cue.showWedge(game.current.color, pos, game.restYaw, clamped, game.heightAt);
       indicator.show(pos, dir, from, Math.min(power, game.maxPowerNow(yaw)), true);
       cue.hide();
       return state();
