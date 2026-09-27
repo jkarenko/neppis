@@ -63,7 +63,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #boot[hidden] { display: none; }
 #boot.is-leaving { opacity: 0; pointer-events: none; }
 .boot-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
-.boot-mark { width: 64px; height: 64px; fill: none; stroke: #1d2430; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.boot-mark { width: 300px; height: 150px; margin-bottom: -22px; fill: #1d2430; }
 .boot-word { font-size: 72px; font-weight: 800; letter-spacing: 0.12em; color: #1d2430; line-height: 1; margin-top: 4px; }
 .boot-strap { font-size: var(--fs-control); color: #5c6570; }
 .boot-progress { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; min-height: var(--h-primary); justify-content: center; }
@@ -81,8 +81,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #boot.is-ready .boot-play { display: inline-flex; }
 #boot.is-failed .boot-fail { display: flex; }
 #boot.is-failed .btn { background: #1d2430; color: var(--text); border-color: transparent; }
-@media (max-width: 600px) { .boot-word { font-size: 44px; } .boot-bar { width: 220px; } }
-@media (max-height: 420px) { .boot-mark { width: 40px; height: 40px; } .boot-word { font-size: 36px; } .boot-progress, .boot-play, .boot-fail { margin-top: 12px; } .boot-inner { gap: 6px; } }
+@media (max-width: 600px) { .boot-mark { width: 190px; height: 95px; margin-bottom: -14px; } .boot-word { font-size: 44px; } .boot-bar { width: 220px; } }
+@media (max-height: 420px) { .boot-mark { width: 150px; height: 75px; margin-bottom: -12px; } .boot-word { font-size: 36px; } .boot-progress, .boot-play, .boot-fail { margin-top: 12px; } .boot-inner { gap: 6px; } }
 
 /* ---- Components ---- */
 .glass { background: var(--surface); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
