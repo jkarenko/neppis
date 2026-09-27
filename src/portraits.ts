@@ -57,8 +57,9 @@ const HAIR_TOP: Record<NonNullable<PortraitSpec['hair']>, string> = {
   tousled: 'M18 29c-1-6 1-11 4-13-1-3 2-5 4-4 1-3 5-4 7-2 3-2 6-1 7 2 3-1 6 1 5 4 2 2 4 7 1 13-3-6-7-9-14-9s-13 3-14 9z',
   spiky: 'M18 30c-1-5 0-9 3-11l-3-6 6 3 2-6 4 4 4-5 4 5 4-4 2 6 2-3-3 6c3 2 4 6 3 11c-3-6-7-9-14-9s-11 3-14 9z',
   mohawk: 'M28 17c0-9 2-13 4-13s4 4 4 13c-1-1-3-2-4-2s-3 1-4 2z',
-  // Parted in the middle, cascading waves down either side past the jaw; the forehead stays bare.
-  wavy: 'M32 13L24 13Q19 15 18 20Q16 24 17 27Q14 31 16 35Q13 40 15 44Q13 49 15 53Q16 56 20 55Q21 50 21 46Q20 42 21 38Q20 34 21 30Q22 25 26 20Q29 17 32 17Z M32 13L40 13Q45 15 46 20Q48 24 47 27Q50 31 48 35Q51 40 49 44Q51 49 49 53Q48 56 44 55Q43 50 43 46Q44 42 43 38Q44 34 43 30Q42 25 38 20Q35 17 32 17Z',
+  // Parted in the middle: two domes that dip at the parting, cascading waves down either side past the jaw; the
+  // forehead stays bare.
+  wavy: 'M32 16C30 9 21 8 18 18Q16 24 17 27Q14 31 16 35Q13 40 15 44Q13 49 15 53Q16 56 20 55Q21 50 21 46Q20 42 21 38Q20 34 21 30Q22 25 26 20Q29 17 32 16Z M32 16C34 9 43 8 46 18Q48 24 47 27Q50 31 48 35Q51 40 49 44Q51 49 49 53Q48 56 44 55Q43 50 43 46Q44 42 43 38Q44 34 43 30Q42 25 38 20Q35 17 32 16Z',
   curly: 'M17 31c-3-4-3-9 0-12-1-5 3-9 7-8 1-4 6-5 8-2 3-3 8-1 8 3 4 0 7 4 5 8 3 3 3 8 0 11-3-6-7-9-14-9s-11 3-14 9z',
 };
 
