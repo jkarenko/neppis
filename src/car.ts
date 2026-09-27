@@ -5,7 +5,7 @@ import { CAR, FLICK, GRAVITY, WHEEL } from './config.ts';
 const WHEEL_X = 0.28;
 const WHEEL_Z = 0.2;
 const WHEEL_Y = -0.08;
-const WHEEL_OFFSETS: [number, number, number][] = [
+export const WHEEL_OFFSETS: [number, number, number][] = [
   [WHEEL_X, WHEEL_Y, -WHEEL_Z],
   [WHEEL_X, WHEEL_Y, WHEEL_Z],
   [-WHEEL_X, WHEEL_Y, -WHEEL_Z],

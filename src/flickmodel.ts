@@ -1,19 +1,19 @@
 /**
  * Empirical flick distance table, [power, distance in world units], measured with
- * scripts/calibrate.ts on a flat piece of track (last run 2026-09-27). Used by the AI to pick a power.
+ * scripts/calibrate.ts on a flat piece of track (last run 2026-09-27, after the solver went to 12 iterations). Used by the AI to pick a power.
  */
 export const FLICK_TABLE: [number, number][] = [
   [0.0, 0.0],
   [0.1, 2.2],
-  [0.2, 4.1],
+  [0.2, 4.0],
   [0.3, 6.1],
-  [0.4, 8.2],
+  [0.4, 8.1],
   [0.5, 10.0],
-  [0.6, 11.5],
-  [0.7, 12.4],
-  [0.8, 14.2],
-  [0.9, 15.3],
-  [1.0, 16.5],
+  [0.6, 11.6],
+  [0.7, 12.9],
+  [0.8, 14.3],
+  [0.9, 14.8],
+  [1.0, 15.5],
 ];
 
 export function distanceForPower(p: number): number {

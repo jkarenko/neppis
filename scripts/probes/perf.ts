@@ -17,7 +17,7 @@ const car = new Car(world, 0, slot.x, slot.z, track.surfaceHeightAt(slot.x, slot
 if (process.env.NO_CHASSIS) world.removeCollider(car.body.collider(0), false);
 const cars = [car];
 for (let k = 1; k < Number(process.env.CARS ?? 1); k++) {
-  const sl = track.startSlots(4)[k];
+  const sl = track.startSlots(6)[k];
   cars.push(new Car(world, 0, sl.x, sl.z, track.surfaceHeightAt(sl.x, sl.z), sl.yaw));
 }
 for (let i = 0; i < 60; i++) world.step();

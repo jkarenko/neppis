@@ -91,7 +91,9 @@ place, flips, tips, off-tracks and flicks per lap per driver. That table is how 
 tuned. Mean place depends on who else was in the heat and needs many heats to settle; flicks per
 lap is the steadier pace measure and should fall as the ladder number rises.
 
-Baseline, 2026-09-27, `SEED=11 pnpm simrace roster 28` on Hietsu, eight races per driver:
+Baseline, 2026-09-27, `SEED=11 pnpm simrace roster 28` on Hietsu, eight races per driver (measured with the
+four-iteration solver; the world runs twelve since the evening of 2026-09-27, see gameplay.md section 2, so the next
+tuning pass should start with a fresh baseline):
 
 | # | driver | wins | mean place | flips | off | flicks/lap |
 |---|---|---|---|---|---|---|

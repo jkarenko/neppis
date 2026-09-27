@@ -5,6 +5,8 @@ export const GRAVITY = -98.1;
 export const PHYS_DT = 1 / 240;
 /** At most this many physics steps per rendered frame: a slow device gets slow motion, not a stall. */
 export const MAX_STEPS_PER_FRAME = 8;
+/** Rapier solver iterations per step; the default 4 leaves a car on its roof rocking for seconds (see physics.ts). */
+export const SOLVER_ITERATIONS = 12;
 
 /** Track grid detail. Mutable so calibration scripts can sweep it. */
 export const TRACK_DETAIL = {

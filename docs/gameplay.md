@@ -43,12 +43,20 @@ and leaving the track is *off track*. The code still calls the first two kelli a
 
   | power | 0.1 | 0.3 | 0.5 | 0.7 | 0.9 | 1.0 |
   |---|---|---|---|---|---|---|
-  | distance, units | 2.2 | 6.1 | 10.0 | 12.4 | 15.3 | 16.5 |
+  | distance, units | 2.2 | 6.1 | 10.0 | 12.9 | 14.8 | 15.5 |
 
 - **Resolution.** The flick is over when the car has been at rest for 0.35 s (or after 12 s of
   flight). The outcome is judged from how the car lies and where it is (section 4), the flick
   count goes down, and after a short pause (0.2 s, or 0.6 s after a penalty) the next flick or
   the next turn begins.
+- **Coming to rest on the roof or the side** used to take the whole 12 s: with Rapier's default
+  four solver iterations the light chassis carrying four heavy wheels on their joints kept rocking
+  at a few millimetres a second and never slept, so a flipped car visibly crept and the player
+  waited for the cap (found by the user 2026-09-27). The world now runs twelve solver iterations
+  (`SOLVER_ITERATIONS` in `src/config.ts`); every landing settles in 0.45 to 1.2 s
+  (`scripts/probes/flip-settle.ts`) at about a tenth of real time with six cars. The more accurate
+  solve moved the flick table a little at the top end (full power 15.5, was 16.5) and the 0.7
+  flick from the ridge crest at 45° no longer flips.
 
 ## 3. Turning and aiming
 
@@ -108,7 +116,7 @@ facing backwards could simply be aimed forwards again.
 - **Measured** with `pnpm scenario reversed 0,0.5 0,0.5 0,0.5` and `pnpm scenario ridge -80,0.7`:
   a car facing backwards turns 42° on its first flick and needs three flicks to face forwards;
   an 80° aim on the ridge is taken at 45°, and a 0.7 flick from the ridge crest at that angle
-  flips the car.
+  flipped the car with the four-iteration solver (it stays on its wheels with twelve, section 2).
 - **A hole this exposes.** Off track is judged only where the car stops. The reversed car's
   second flick cut across the infield from the start straight to the back straight and was
   scored clean, with its lap count going backwards. The rule should also catch a flight that
