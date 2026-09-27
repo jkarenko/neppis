@@ -60,6 +60,8 @@ to base numbers, then each driver's traits override individual knobs:
 | Aim | `aimNoise` (rad) | 0.12 | 0.08 | 0.05 | 0.03 | 0.015 |
 | Nerve | `aggression` | 0.6 | 0.72 | 0.85 | 0.95 | 1.08 |
 | Nerve | `jumpCaution` | 1 | 0.5 | 0 | 0 | 0 |
+| Aim | `foresight` | 0 | 0 | 0.25 | 0.5 | 1 |
+| Nerve | `avoid` | 1 | 1 | 0.7 | 0.4 | 0 (any bully: 0) |
 
 `powerNoise` defaults to 0.03. Everything else defaults to neutral and is set per driver in the roster
 file, which is the source of truth for the numbers; this doc holds the intent.
@@ -76,15 +78,65 @@ interface AiProfile {
   bully: number;           // chance to aim at a rival within reach and inside the wedge (Denny Ricochet 0.8)
   leadEase: number;        // aggression multiplier when leading (The Dune 0.85)
   lineBias: number;        // preference for the inside of the coming bend, -1..1 (Bastion Vette 0.9)
+  foresight: number;       // weight of the next flick's reach when choosing this one's landing, 0..1
+  laneHold: number;        // reluctance to change lateral position for nothing, 0..1 (Bastion Vette 1, Rando 0)
+  avoid: number;           // a rival on the line ends it (1) or is driven through (0, the maniacs)
 }
 ```
 
+## Strategy: anticipating turns, lanes, other cars
+
+Asked for on 2026-09-27 evening: "the AI's strategy should involve anticipating turns, drive
+lanes and avoiding other cars, unless they're a maniac." The reading, and how it maps onto the
+planner:
+
+- **Anticipating turns.** The line planner used to take the longest straight that stays on the
+  track and stop thinking there. But the flick after it is decided by how this one lands: the
+  45° wedge is centred on the resting heading and the power cap falls steeply past 15° of turn
+  (`gameplay.md` section 3), so a car that arrives at a bend pointing along the straight has a
+  weak next flick, and one that has already turned its nose towards the apex has a strong one.
+  The planner now scores every clear landing by the track distance it gains plus `foresight`
+  times what the best next flick from there can gain: the furthest clear line inside the wedge
+  around the landing heading, at the power the turn allows, counted along the track direction
+  so a line pointing back scores nothing. Two flicks deep, no further: the third flick depends on
+  noise and on the other cars. The outside-apex-outside line through a bend, and turning in
+  early, come out of that search instead of being drawn by hand; drivers with low foresight
+  still take the longest straight and arrive at bends pointing the wrong way.
+- **Drive lanes.** Everyone used to aim at the centreline whenever it was as long as the rest,
+  so the whole field funnelled into one lane and into each other. Now the car's own lateral
+  position is a candidate lane, and shifting sideways costs `laneHold` times the shift, so a
+  driver holds the lane they are in until a bend or a rival gives a reason to move. Rando
+  wanders (0); Bastion Vette, Nudge Manhandle and Bea Line hold theirs (0.8 to 1).
+- **Avoiding other cars.** A rival on the line is where the line ends for a driver who avoids
+  contact: the score counts the distance up to the rival plus `avoid` less of the rest, so a
+  clear line past the rival wins over a longer one through it. A maniac (`avoid` 0, which every
+  bully is) plans as if the track were empty and drives through; the bully branch, which aims at
+  a rival on purpose, is unchanged and still comes first when it rolls. Rivals are only judged
+  on this flick, not the next: they will have moved.
+
+Cost: a plan is a few hundred candidate lines, each with a seven-direction look at the next
+flick, tens of thousands of track queries, a few milliseconds. Fine once per AI flick.
+
+Measured on 2026-09-27 evening against the previous planner (`probes/bumps.ts`, six heats of six
+on Hietsu, and `probes/lap-trace.ts` solo over four seeds): the drivers who avoid contact bump a
+rival on 8.5 flicks in 100 instead of 10.5, off-tracks fell from 5 to 2 in about 2400 flicks,
+and the field takes about 8 % more flicks per lap in company (36.8 against 34.1) because a
+blocked line is now flicked short of the rival instead of through it. Solo pace is within noise
+(28.9 flicks per lap over seven drivers against 28.1). Anticipation does not show in the pace
+on Hietsu: its bends are wide and the flick range spans them, so the longest clear straight
+already cut them; the next flick's weight is 0.35 and a lane shift costs 0.3 of track length
+per unit at laneHold 1 (`NEXT_WEIGHT`, `LANE_COST` in `src/ai.ts`). `probes/lap-map.ts` draws
+the lines a heat took. The ladder table below predates this change.
+
 Planner order in `planFlick`: off-track recovery → bully target if rolled and a rival is within
-reach, roughly ahead and on the track → the longest safe straight, scaled by aggression + tilt ×
-places behind, × leadEase when leading, × afterFlip after a flip → shortened towards a jump or dip
-the line would cross, by jumpCaution → target shaded to the inside of its bend by lineBias → the
-line pulled into the 45° turn wedge (`gameplay.md` section 3), with the power cut to what stays on
-the track along the pulled line → aim and power noise. Every knob is data; no per-driver code.
+reach, roughly ahead and on the track → every clear straight line to a point ahead in one of five
+lanes or the car's own, scored by track distance gained (cut at a rival for those who avoid them),
+plus foresight × the next flick's reach from the landing, plus lineBias for the inside of the bend,
+minus laneHold × the sideways shift; the best line's length is scaled by aggression + tilt × places
+behind, × leadEase when leading, × afterFlip after a flip → shortened towards a jump or dip the
+line would cross, by jumpCaution → the line pulled into the 45° turn wedge (`gameplay.md` section
+3), with the power cut to what stays on the track along the pulled line → aim and power noise.
+Every knob is data; no per-driver code.
 
 `pnpm simrace roster [heats]` races the whole ladder in heats of six and prints races, wins, mean
 place, flips, tips, off-tracks and flicks per lap per driver. That table is how the ladder gets
