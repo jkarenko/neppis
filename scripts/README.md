@@ -8,7 +8,7 @@ browser. None ship with the game.
 | Command | What it does |
 | --- | --- |
 | `pnpm calibrate` | Measures flick distance and flip rate per power on the calibration oval. Feeds `src/flickmodel.ts`. |
-| `pnpm simrace` | AI-vs-AI race to exercise the rules engine. |
+| `pnpm simrace` | AI-vs-AI race to exercise the rules engine. `pnpm simrace roster [heats]` races the whole driver ladder in heats of six and prints a table per driver; `LAPS`, `SEED`, `TRACK`. |
 | `pnpm terrain-risk` | Flicks over the jump and into the ridge to see whether terrain alone causes kellis. |
 | `pnpm surfcheck` | Casts rays onto the track colliders and fails if any lands off the physics surface. |
 | `pnpm scenario` | Loads a scenario in the headless browser (`pnpm scenario ridge 0,0.6 -20,0.4`), drives it through `window.__neppis`, prints the game state as JSON after each flick. `OUT=path.png` for a shot before and after each flick, `AIM=1` to hold the first aim in the before shot, `VIEWPORT`, `URL`. Presets and URL parameters are in `src/scenario.ts`. |
@@ -20,6 +20,8 @@ browser. None ship with the game.
 | --- | --- |
 | `probes/debug-flick.ts` | Step-by-step trace of a single flick. |
 | `probes/perf.ts` | Times the physics step with one or more cars on the real track. |
+| `probes/lap-trace.ts` | One AI driver alone for a lap: per flick, planned distance against distance gained. `lap-trace.ts <driver-id>`, `TRACK=`. |
+| `probes/spot-variance.ts` | The same flick from many spots along a straight, to separate track geometry from the flick model. `TEXTURE=` scales the floor texture. |
 
 Run a probe with `./node_modules/.bin/tsx scripts/probes/<name>.ts`.
 

@@ -10,6 +10,8 @@ export const MAX_STEPS_PER_FRAME = 8;
 export const TRACK_DETAIL = {
   /** Physics grid under the track (world units). 12.5 mm stays within 2 mm of the drawn ribbon. */
   fineCell: 0.125,
+  /** Multiplier on the millimetre texture of the damp floor; 0 is glass-smooth. */
+  fineTexture: 1,
 };
 
 export const CAR = {

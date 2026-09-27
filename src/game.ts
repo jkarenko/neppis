@@ -4,7 +4,7 @@ import { Car } from './car.ts';
 import type { Track, TrackQuery } from './track.ts';
 import { PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
 import { Rng } from './rng.ts';
-import { clampTurn, planFlick, type Plan } from './ai.ts';
+import { clampTurn, planFlick, type AiProfile, type Plan, type RaceContext } from './ai.ts';
 
 /** Where to put a car instead of its grid slot, in track terms so scenarios survive track edits. */
 export interface TrackPose {
@@ -21,6 +21,8 @@ export interface TrackPose {
 export interface PlayerSetup {
   name: string;
   ai: boolean;
+  /** How an AI drives; the default driver when missing. */
+  profile?: AiProfile;
   pose?: TrackPose;
 }
 
@@ -28,6 +30,9 @@ export interface Player {
   id: number;
   name: string;
   ai: boolean;
+  profile?: AiProfile;
+  /** The player's last flick ended on the roof. */
+  flipped: boolean;
   color: number;
   car: Car;
   lap: number;
@@ -82,6 +87,8 @@ export class Game {
   private restYaw = 0;
   /** AI flicks whose wanted line was outside the wedge, for the headless race report. */
   aiClamped = 0;
+  /** The plan behind the AI's latest flick, for the headless tools. */
+  lastPlan: Plan | null = null;
   readonly heightAt = (x: number, z: number): number => this.track.heightAt(x, z);
 
   constructor(
@@ -110,6 +117,8 @@ export class Game {
         id: i,
         name: s.name,
         ai: s.ai,
+        profile: s.profile,
+        flipped: false,
         color: car.color,
         car,
         lap,
@@ -306,6 +315,7 @@ export class Game {
         break;
     }
     this.lastOutcome = outcome;
+    p.flipped = outcome === 'kelli';
 
     for (const pl of this.players) {
       const pp = pl.car.position;
@@ -368,6 +378,14 @@ export class Game {
     else this.startTurn();
   }
 
+  /** What the planner may know about the race: standing, rivals still running, and its own last flick. */
+  private raceContext(p: Player): RaceContext {
+    const running = this.players.filter((o) => !o.finished);
+    const place = 1 + running.filter((o) => o !== p && o.progress > p.progress).length;
+    const rivals = running.filter((o) => o !== p).map((o) => ({ x: o.car.position.x, z: o.car.position.z }));
+    return { place, rivals, afterFlip: p.flipped };
+  }
+
   private scheduleAi(delay: number): void {
     this.aiPlan = null;
     this.aiTimer = delay;
@@ -376,11 +394,12 @@ export class Game {
   private runAi(): void {
     if (this.phase !== 'aim' || !this.current || !this.current.ai) return;
     if (!this.aiPlan) {
-      const plan = planFlick(this.track, this.current.car, this.rng);
+      const plan = planFlick(this.track, this.current.car, this.rng, this.current.profile, this.raceContext(this.current));
       // The planner respects the wedge itself; the clamp here only catches its aim noise spilling over the edge.
       plan.yaw = clampTurn(plan.yaw, this.restYaw);
       if (plan.clamped) this.aiClamped++;
       this.aiPlan = plan;
+      this.lastPlan = plan;
       this.current.car.setPreview(plan.yaw, this.heightAt);
       this.aiTimer = 0.45;
       return;

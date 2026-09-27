@@ -49,27 +49,44 @@ the ladder (see "Arcade race" under Setup), so the full list is never on one gri
 
 The knobs behind "Plays like":
 
-## Profile shape (extends `AiOptions`)
+## Profile shape
+
+Implemented 2026-09-27 in `src/ai.ts` (`AiProfile`, `RaceContext`) and `src/roster.ts`. The card stats map
+to base numbers, then each driver's traits override individual knobs:
+
+| Stat | Knob | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| Power | `maxPower` | 0.35 | 0.5 | 0.65 | 0.82 | 1.0 |
+| Aim | `aimNoise` (rad) | 0.12 | 0.08 | 0.05 | 0.03 | 0.015 |
+| Nerve | `aggression` | 0.6 | 0.72 | 0.85 | 0.95 | 1.08 |
+| Nerve | `jumpCaution` | 1 | 0.5 | 0 | 0 | 0 |
+
+`powerNoise` defaults to 0.03. Everything else defaults to neutral and is set per driver in the roster
+file, which is the source of truth for the numbers; this doc holds the intent.
 
 ```ts
 interface AiProfile {
-  maxPower: number;        // existing
-  aggression: number;      // existing: fraction of the safe straight actually attempted
-  aimNoise: number;        // existing: radians
-  powerNoise: number;      // new: gaussian on power, "consistency"
-  jumpCaution: number;     // new: 0..1 power cap multiplier when the safe line crosses the jump or ridges
-  afterFlip: number;       // new: aggression multiplier for the turn after a flip (Mike Rometer 0.6, Rufus Turner 1.0)
-  tilt: number;            // new: aggression shift per place behind the leader (Nicky Louder +, Mash Overstep 0)
-  bully: number;           // new: 0..1 chance to aim at a car within reach instead of the line
-  leadEase: number;        // new: aggression multiplier when leading (The Dune 0.85)
-  lineBias: number;        // new: -1..1 lateral preference across the track width (Bastion Vette hugs the inside)
+  maxPower: number;        // never flick harder than this
+  aggression: number;      // fraction of the safe straight actually attempted; above 1 overshoots it
+  aimNoise: number;        // radians, standard deviation
+  powerNoise: number;      // gaussian on power, "consistency"
+  jumpCaution: number;     // 0 ignores the jump and dip, 1 stops short of them when the line would cross one
+  afterFlip: number;       // aggression multiplier for the flick after a flip (Mike Rometer 0.6, Rufus Turner 1.1)
+  tilt: number;            // aggression added per place behind the leader (Nicky Louder 0.1)
+  bully: number;           // chance to aim at a rival within reach and inside the wedge (Denny Ricochet 0.8)
+  leadEase: number;        // aggression multiplier when leading (The Dune 0.85)
+  lineBias: number;        // preference for the inside of the coming bend, -1..1 (Bastion Vette 0.9)
 }
 ```
 
-Strategy branches in `planFlick`, in order: restrict every candidate direction to the 45°
-turn wedge (`gameplay.md` section 3) → off-track recovery (existing) → bully target if
-rolled → safe straight (existing, searched within the wedge) scaled by aggression × tilt × leadEase × afterFlip → power
-capped by maxPower and by jumpCaution when the line crosses the jump → noise. Every knob is
-data; no per-driver code. `pnpm simrace` gets a roster mode that races the whole ladder for N laps and
-prints win rate and flip rate per driver, which is how the ladder gets tuned.
+Planner order in `planFlick`: off-track recovery → bully target if rolled and a rival is within
+reach, roughly ahead and on the track → the longest safe straight, scaled by aggression + tilt ×
+places behind, × leadEase when leading, × afterFlip after a flip → shortened towards a jump or dip
+the line would cross, by jumpCaution → target shaded to the inside of its bend by lineBias → the
+line pulled into the 45° turn wedge (`gameplay.md` section 3), with the power cut to what stays on
+the track along the pulled line → aim and power noise. Every knob is data; no per-driver code.
+
+`pnpm simrace roster` races the whole ladder in heats of six, everyone twice, and prints races,
+wins, mean place, flips, tips, off-tracks and flicks per lap per driver. That table is how the
+ladder gets tuned: mean place should fall as the ladder number rises.
 

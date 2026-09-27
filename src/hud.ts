@@ -1,7 +1,10 @@
 import type { Game, Player, PlayerSetup } from './game.ts';
 import { PLAYER_COLORS } from './config.ts';
+import { DEFAULT_GRID, DRIVER_BY_ID, driverByName } from './roster.ts';
 
-const AI_NAMES = ['Kalle', 'Pena', 'Simo', 'Raimo', 'Tapsa'];
+// Interim: until the setup screen from docs/ui-plan.md exists, AI rows get roster drivers by name, and a typed
+// name that matches a driver takes that driver's profile.
+const AI_NAMES = DEFAULT_GRID.map((id) => DRIVER_BY_ID[id].name);
 
 function hex(c: number): string {
   return '#' + c.toString(16).padStart(6, '0');
@@ -36,7 +39,7 @@ export class Hud {
       for (const row of Array.from(this.rows.children)) {
         const name = (row.querySelector('input') as HTMLInputElement).value.trim() || 'Player';
         const ai = (row.querySelector('select') as HTMLSelectElement).value === 'ai';
-        setups.push({ name, ai });
+        setups.push({ name, ai, profile: ai ? driverByName(name)?.profile : undefined });
       }
       if (setups.length === 0) return;
       this.setup.hidden = true;

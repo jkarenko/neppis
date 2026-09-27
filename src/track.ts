@@ -293,7 +293,7 @@ export class Track {
     const outsideMix = smooth(Math.max(0, Math.min(1, (ad - hw) / RIDGE_HALF)));
     h += rough * outsideMix;
     // Damp, foot-smoothed sand still has millimetre texture: rolling bumps, no rigid grains.
-    const fine = 0.006 * (noise2(x * 2 + 11, z * 2 + 5) - 0.5) + 0.004 * (noise2(x * 2.7 + 3, z * 2.7 + 17) - 0.5);
+    const fine = TRACK_DETAIL.fineTexture * (0.006 * (noise2(x * 2 + 11, z * 2 + 5) - 0.5) + 0.004 * (noise2(x * 2.7 + 3, z * 2.7 + 17) - 0.5));
     h += fine * (1 - outsideMix);
     // Features (jumps, dips) across the track, fading out over the ridge.
     const inTrack = 1 - smooth(Math.max(0, Math.min(1, (ad - hw) / (RIDGE_HALF * 1.5))));
