@@ -57,7 +57,8 @@ const HAIR_TOP: Record<NonNullable<PortraitSpec['hair']>, string> = {
   tousled: 'M18 29c-1-6 1-11 4-13-1-3 2-5 4-4 1-3 5-4 7-2 3-2 6-1 7 2 3-1 6 1 5 4 2 2 4 7 1 13-3-6-7-9-14-9s-13 3-14 9z',
   spiky: 'M18 30c-1-5 0-9 3-11l-3-6 6 3 2-6 4 4 4-5 4 5 4-4 2 6 2-3-3 6c3 2 4 6 3 11c-3-6-7-9-14-9s-11 3-14 9z',
   mohawk: 'M28 17c0-9 2-13 4-13s4 4 4 13c-1-1-3-2-4-2s-3 1-4 2z',
-  wavy: 'M14 44c-2-12-1-22 4-27 3-3 8-5 14-5s11 2 14 5c5 5 6 15 4 27-2 1-4 1-5 0 1-8 0-14-3-19-3 2-6 3-10 3s-7-1-10-3c-3 5-4 11-3 19-1 1-3 1-5 0z',
+  // Parted in the middle, cascading waves down either side past the jaw; the forehead stays bare.
+  wavy: 'M32 13L24 13Q19 15 18 20Q16 24 17 27Q14 31 16 35Q13 40 15 44Q13 49 15 53Q16 56 20 55Q21 50 21 46Q20 42 21 38Q20 34 21 30Q22 25 26 20Q29 17 32 17Z M32 13L40 13Q45 15 46 20Q48 24 47 27Q50 31 48 35Q51 40 49 44Q51 49 49 53Q48 56 44 55Q43 50 43 46Q44 42 43 38Q44 34 43 30Q42 25 38 20Q35 17 32 17Z',
   curly: 'M17 31c-3-4-3-9 0-12-1-5 3-9 7-8 1-4 6-5 8-2 3-3 8-1 8 3 4 0 7 4 5 8 3 3 3 8 0 11-3-6-7-9-14-9s-11 3-14 9z',
 };
 
@@ -152,7 +153,8 @@ function beard(spec: PortraitSpec): string {
     case 'stubble':
       return `<path d="M20 34c2 8 6 12 12 12s10-4 12-12c-2 6-6 9-12 9s-10-3-12-9z" fill="${INK}" opacity="0.3"/>`;
     case 'goatee':
-      return `<path d="M26 37c2-1.5 4-2 6-2s4 .5 6 2c-1 1-3 1.5-6 1.5s-5-.5-6-1.5z" fill="${c}"/><path d="M27 43c1 3 3 4.5 5 4.5s4-1.5 5-4.5c-1 1-3 1.6-5 1.6s-4-.6-5-1.6z" fill="${c}"/>`;
+      // A straight, narrow moustache just above the mouth and a long scraggly chin beard, both in the hair colour.
+      return `<rect x="27.5" y="37.2" width="9" height="2" rx="0.8" fill="${c}"/><path d="M27 43c1 2 3 3 5 3s4-1 5-3l0 4-1.5 3 .5 3-3-2-1 3-1-3-3 2 .5-3-1.5-3z" fill="${c}"/>`;
     default:
       return '';
   }
