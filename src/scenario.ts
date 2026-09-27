@@ -13,6 +13,7 @@
 // not glide, the first-turn finger cue is off, turns run in setup order (human first) and window.__neppis exposes
 // the debug handle below.
 import type { PlayerSetup, TrackPose } from './game.ts';
+import { DRIVER_BY_ID } from './roster.ts';
 
 export type CameraMode = 'chase' | 'top' | 'side';
 
@@ -68,8 +69,9 @@ export interface NeppisDebug {
 }
 
 const pose = (t: number, lateral: number, headingDeg: number, along = 0): TrackPose => ({ t, along, lateral, heading: (headingDeg * Math.PI) / 180 });
-const human = (p: TrackPose): PlayerSetup => ({ name: 'You', ai: false, pose: p });
+const human = (p: TrackPose): PlayerSetup => ({ name: 'Player 1', ai: false, pose: p });
 const rival = (p: TrackPose, name = 'Rival'): PlayerSetup => ({ name, ai: true, pose: p });
+const roster = (id: string, p: TrackPose): PlayerSetup => ({ name: DRIVER_BY_ID[id].name, ai: true, profile: DRIVER_BY_ID[id].profile, driverId: id, pose: p });
 
 /** Named situations. The test track's ridge crest is 0.9 from the centreline, its outer slope ends at 1.2. */
 export const PRESETS: Record<string, Partial<Scenario>> = {
@@ -85,6 +87,9 @@ export const PRESETS: Record<string, Partial<Scenario>> = {
   rival: { players: [human(pose(0.12, 0, 0)), rival(pose(0.12, 0.2, 0, 1.0))] },
   /** Three car lengths before the jump. */
   jump: { players: [human(pose(0.57, 0, 0, -2.4))] },
+  /** One flick from the finish line with a roster driver behind: a flick over the line ends the race and shows
+   *  the results screen. */
+  finish: { players: [human(pose(0.97, 0, 0)), roster('bea-line', pose(0.5, -0.3, 0))], laps: 1 },
 };
 
 function parsePose(s: string): TrackPose {

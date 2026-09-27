@@ -8,7 +8,8 @@
 //   resized in place, so a full set takes about a minute.
 //   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
 //   FULL=1 captures the whole scrollable page, for the kit (?kit). STOP=menu|setup stops at that screen instead of
-//   starting the race; HOLD=1 shoots the title screen; with ?boot=hold in the url the loading state is shot.
+//   starting the race (STOP=opponents opens that screen); HOLD=1 shoots the title screen; with ?boot=hold in the url
+//   the loading state is shot.
 import { readFile } from 'node:fs/promises';
 import type { Page } from 'playwright';
 import { PRESETS, launchBrowser, openPage, parseViewport, type Viewport } from './lib/browser.ts';
@@ -77,11 +78,14 @@ for (const [scale, group] of byScale) {
       await page.click('#boot');
       await page.waitForTimeout(400);
     }
-    if (stop !== 'menu' && (await page.isVisible('#menuRace'))) {
+    if (stop === 'opponents' && (await page.isVisible('#menuOpponents'))) {
+      await page.click('#menuOpponents');
+      await page.waitForTimeout(300);
+    } else if (stop !== 'menu' && (await page.isVisible('#menuRace'))) {
       await page.click('#menuRace');
       await page.waitForTimeout(300);
     }
-    if (stop !== 'menu' && stop !== 'setup' && (await page.isVisible('#start'))) await page.click('#start');
+    if (stop === 'race' && (await page.isVisible('#start'))) await page.click('#start');
   }
   await page.waitForTimeout(Number(process.env.WAIT_MS ?? 2500));
 

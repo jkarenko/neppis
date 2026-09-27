@@ -145,17 +145,53 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 .stat-bar i { height: 6px; border-radius: 3px; background: var(--line); }
 .stat-bar i.on { background: var(--c); }
 
-/* Opponent card: front (name, epithet, stats), back (flavour and traits). */
-.driver { position: relative; width: 200px; min-height: 230px; border-radius: var(--r-card); background: var(--surface-strong); color: var(--text); padding: 14px; display: flex; flex-direction: column; gap: 10px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 2px solid transparent; }
+/* Opponent card: front (portrait, name, epithet, stats), back (flavour, strength, weakness, Race this one).
+   In the strip it is a button that toggles; on the Opponents screen it flips. Sizes are fixed so a flip moves nothing. */
+.driver { position: relative; width: 200px; height: 262px; border-radius: var(--r-card); background: var(--surface-strong); color: var(--text); padding: 14px; display: flex; flex-direction: column; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 2px solid transparent; text-align: center; font: inherit; cursor: default; flex: none; -webkit-tap-highlight-color: transparent; }
+.driver[role="button"], button.driver { cursor: pointer; transition: transform var(--t-fast), border-color var(--t-fast); }
+.driver[role="button"]:active, button.driver:active { transform: scale(0.98); }
+.driver:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+button.driver:disabled { opacity: 0.4; cursor: default; }
 .driver.is-picked { border-color: var(--c); }
-.driver .portrait { width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--c) 40%, #1d2430); display: grid; place-items: center; font-weight: 700; font-size: 22px; color: var(--text); }
-.driver .who { display: flex; align-items: center; gap: 12px; }
-.driver .name { font-weight: 600; font-size: var(--fs-control); line-height: 1.15; }
-.driver .epithet { color: var(--muted); font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.06em; }
-.driver .flavour { color: var(--text); font-size: var(--fs-body); font-style: italic; }
-.driver .pick { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #1d2430; display: none; place-items: center; }
-.driver.is-picked .pick { display: grid; }
-.driver .pick .icon { width: 18px; height: 18px; }
+.driver .face-front, .driver .face-back { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-height: 0; }
+.driver .face-back { display: none; text-align: left; align-items: stretch; }
+.driver.is-back .face-front { display: none; }
+.driver.is-back .face-back { display: flex; }
+.driver.is-back .rank { display: none; }
+.driver .face-back .name { white-space: normal; }
+.portrait { width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--c) 45%, #1d2430); overflow: hidden; flex: none; display: block; }
+.portrait .face, .face { width: 100%; height: 100%; display: block; }
+.portrait.is-small { width: 32px; height: 32px; }
+.driver .portrait { width: 80px; height: 80px; margin-bottom: 6px; }
+.driver .name { font-weight: 600; font-size: var(--fs-control); line-height: 1.2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.driver .epithet { color: var(--muted); font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.driver .stats { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 10px; }
+.driver .rank { position: absolute; top: 10px; left: 12px; color: var(--muted); font-size: var(--fs-label); opacity: 0.8; }
+.driver .flavour { color: var(--text); font-size: 13px; font-style: italic; margin: 4px 0 6px; line-height: 1.3; }
+.driver .traits { margin: 0; font-size: var(--fs-label); line-height: 1.3; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.driver .traits dt { color: var(--muted); }
+.driver .traits dd { margin: 0; }
+.driver .race-one { margin-top: auto; font-size: var(--fs-body); min-height: 40px; }
+.driver .pick, .driver .beaten { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; display: none; place-items: center; }
+.driver .pick { background: var(--c); color: #1d2430; }
+.driver .beaten { background: var(--ok); color: #1d2430; }
+.driver.is-picked .pick, .driver.is-beaten .beaten { display: grid; }
+.driver.is-picked.is-beaten .beaten { right: 42px; }
+.driver .pick .icon, .driver .beaten .icon { width: 18px; height: 18px; }
+/* Compact size for the setup strip. */
+.driver.is-compact { width: 156px; height: 200px; padding: 12px; }
+.driver.is-compact .portrait { width: 56px; height: 56px; margin-bottom: 4px; }
+.driver.is-compact .name { font-size: var(--fs-body); }
+.driver.is-compact .epithet { font-size: 10px; }
+.driver.is-compact .stats { gap: 5px; margin-top: 8px; }
+.driver.is-compact .stat-bar { grid-template-columns: 40px repeat(5, 1fr); font-size: 11px; }
+.driver.is-compact .stat-bar i { height: 5px; }
+.driver.is-compact .rank { top: 8px; left: 10px; font-size: 11px; }
+.driver.is-compact .pick { width: 24px; height: 24px; top: 8px; right: 8px; }
+.driver.is-compact .pick .icon { width: 16px; height: 16px; }
+/* A horizontal, snapping strip of cards. */
+.strip-scroll { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding: 4px 2px 10px; scrollbar-width: thin; }
+.strip-scroll > * { scroll-snap-align: start; }
 
 /* ---- HUD ---- */
 #hud { position: fixed; inset: 0; pointer-events: none; color: var(--text); }
@@ -222,7 +258,6 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 .screen-head { display: flex; align-items: center; gap: 12px; margin: -4px 0 8px -6px; }
 .screen-head h2 { margin: 0; }
 .screen-head .back { border-color: transparent; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
-#setupForm { width: min(92vw, 560px); }
 /* Menu: the mark and word carry the title's lockup through at a smaller size, then the items. */
 .menu-card { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(92vw, 360px); }
 .menu-mark { width: 180px; height: auto; margin-bottom: -6px; filter: drop-shadow(0 1px 2px rgba(255,255,255,0.35)); }
@@ -231,26 +266,64 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 .menu-card .btn-menu { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18); }
 .menu-card .btn-menu.btn-primary { background: #1d2430; color: var(--text); }
 .menu-foot { font-size: var(--fs-label); color: #5c6570; margin-top: 8px; }
-#results ol { padding-left: 22px; margin: 0 0 16px; }
-#results li { margin: 6px 0; }
-#results li .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
 #pause .sub { text-align: center; margin: 0 0 4px; }
-/* The racer list and, beside it, the controls that must never move when a row is added. */
-.setup-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
-/* The list reserves the height of six racers, so the card is the same size with one or six and nothing moves. */
-#playerRows { min-height: 336px; }
-.setup-side { display: flex; flex-direction: column; gap: 12px; align-items: stretch; min-width: 200px; }
-.setup-side .btn-primary { margin-top: 8px; }
-@media (max-width: 600px) {
-  .setup-grid { grid-template-columns: 1fr; }
+/* Setup: players left, the ladder strip right, laps and Start in the foot under the strip. The players list
+   reserves the height of six rows so nothing moves when a row is added. */
+.setup-card { width: min(94vw, 960px); }
+.setup-grid { display: grid; grid-template-columns: 272px 1fr; grid-template-areas: "players opponents" "players foot"; gap: 8px 24px; align-items: start; }
+.setup-grid h3 { margin: 0 0 8px; font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.setup-players { grid-area: players; }
+#playerRows { min-height: 300px; }
+.setup-opponents { grid-area: opponents; min-width: 0; }
+.setup-oppo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.setup-oppo-head h3 { margin: 0; }
+.tiers { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip.tier { border: 1px solid var(--line); background: var(--surface-raised); font: inherit; font-size: var(--fs-body); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); -webkit-tap-highlight-color: transparent; }
+.chip.tier:active { background: color-mix(in srgb, var(--surface-raised), white 6%); }
+.chip.tier.is-on { background: var(--text); color: #1d2430; border-color: transparent; font-weight: 600; }
+.chip.tier:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.setup-foot { grid-area: foot; display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+.setup-foot #gridCount { margin-left: auto; font-size: var(--fs-label); }
+.setup-foot .btn-primary { min-width: 180px; }
+.prow { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; margin: 0 0 6px; }
+.prow .swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); padding: 0; cursor: pointer; transition: transform var(--t-fast); -webkit-tap-highlight-color: transparent; }
+.prow .swatch:active { transform: scale(0.9); }
+.prow .swatch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.prow .remove { border-color: transparent; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.prow .remove:disabled { opacity: 0.25; }
+@media (max-width: 760px) {
+  .setup-grid { grid-template-columns: 1fr; grid-template-areas: "players" "opponents" "foot"; }
+  #playerRows { min-height: 0; }
+  .setup-foot { flex-wrap: wrap; }
+  .setup-foot .btn-primary { flex: 1 0 100%; }
 }
+/* Opponents screen: the ladder by tier; the card scrolls inside the overlay. */
+.roster-card { width: min(94vw, 1120px); max-height: calc(100dvh - var(--inset-top) - var(--inset-bottom)); overflow: auto; overscroll-behavior: contain; }
+#roster h3 { margin: 12px 0 8px; font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+#roster .cards { display: flex; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 480px) { #roster .cards .driver { width: calc(50% - 6px); } }
+/* Results: the first three on steps, the winner in the middle and tallest, then rows with the race stats. */
+.podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: end; margin: 8px 0 14px; }
+.podium .step { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px 0; border-radius: var(--r-chip) var(--r-chip) 0 0; background: color-mix(in srgb, var(--c) 22%, transparent); box-shadow: inset 0 3px 0 var(--c); text-align: center; }
+.podium .p1 { min-height: 132px; order: 2; }
+.podium .p2 { min-height: 112px; order: 1; }
+.podium .p3 { min-height: 100px; order: 3; }
+.podium .portrait { width: 56px; height: 56px; }
+.podium .name { font-size: var(--fs-body); font-weight: 600; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium .place { margin-top: auto; padding: 4px 0 8px; font-size: var(--fs-title); font-weight: 700; color: var(--muted); }
+.results-rows { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 2px; }
+.results-rows li { display: grid; grid-template-columns: 20px 32px 1fr 48px 40px 60px; gap: 10px; align-items: center; min-height: 40px; padding: 2px 8px; border-radius: var(--r-chip); }
+.results-rows li.head { min-height: 20px; color: var(--muted); font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0; }
+.results-rows li .num { text-align: right; }
+.results-rows li.head span { text-align: right; }
+.results-rows .place { color: var(--muted); font-weight: 600; }
+.results-rows .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.results-rows .face { width: 32px; height: 32px; }
+#results .screen-card { width: min(92vw, 460px); max-height: calc(100dvh - var(--inset-top) - var(--inset-bottom)); overflow: auto; }
 /* Too short for the card: pin it to the top and let the overlay scroll instead of moving anything. */
 @media (max-height: 620px) {
   .screen { place-items: start center; overflow: auto; }
 }
-.prow { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; margin: 6px 0; }
-.prow .swatch { width: 14px; height: 14px; border-radius: 50%; }
-.prow select.field { width: auto; min-width: 104px; }
 
 /* ---- Kit page (?kit): every component in every state, for the screenshot contact sheet. ---- */
 /* In kit mode the page itself scrolls, so a full-page screenshot captures all of it; the scene stays fixed behind. */
@@ -265,6 +338,10 @@ html.kit, html.kit body { overflow: auto; height: auto; min-height: 100%; }
 #kit .col { width: min(100%, 360px); }
 #kit .cards { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 #kit .icons { display: flex; flex-wrap: wrap; gap: 6px; }
+#kit .faces { display: flex; flex-wrap: wrap; gap: 10px; }
+#kit .face-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 96px; font-size: 11px; color: var(--text); text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+#kit .face-tile .portrait { width: 96px; height: 96px; }
+#kit .strip-scroll { max-width: 700px; }
 #kit .icons .chip { padding: 0 10px; gap: 6px; font-size: var(--fs-label); }
 
 @media (max-width: 600px) {

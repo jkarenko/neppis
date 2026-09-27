@@ -109,6 +109,63 @@ Design reading for step 5 (2026-09-27, before building):
   desktop. Race is the primary (filled), the rest are glass. (Original brief; see the reading.)
 
 ### Setup
+
+Design reading for step 6 (2026-09-27, before building):
+
+- **Job.** Build a grid in as few taps as possible and remember it. Two decisions, kept apart on
+  the screen because they are made by different people: who is playing (the humans at the table)
+  and who they race (the AI). Laps and Start are the footer of both.
+- **Two columns on tablet and desktop** inside one card up to 960 px wide: Players left, Opponents
+  right. Phone: one column, Players first. The head is Back and "Race"; the strap line goes, the
+  screen explains itself now.
+- **Players** are human rows only: colour swatch, name field, remove. The swatch is a button that
+  cycles through the colours no other human holds; opponents take the free colours after the
+  humans, in ladder order, so a card's colour follows the choices above it. "Add player" sits
+  under the rows and adds "Player n". The list reserves the height of six rows, so the card is
+  the same size with one human or six and nothing below moves. The last human cannot be removed:
+  its remove button is disabled rather than hidden, so the row keeps its shape. Names are
+  remembered, so a hot-seat group types them once.
+- **Opponents** is the ladder as a horizontal strip of compact driver cards in ladder order,
+  easiest first (portrait, name, epithet, ladder number, three stat bars), scroll-snapped, with
+  the picked ones bordered and ticked in their grid colour. Tap toggles a driver in or out. The
+  strip is the whole roster, never a subset, so picking a specific villain is always one scroll
+  away. The compact card is a second size of the kit's driver card; the flavour line lives on
+  the Opponents screen, not here, because the setup is for choosing, not browsing.
+- **Arcade tiers** sit above the strip as four chips: Rookie, Club, Pro, Legend. A tap draws the
+  opponents for that tier: three of them (a four-car race is the sweet spot between waiting for
+  AI turns and a crowd; with more humans it fills to six at most), all but one from the tier's
+  window of the ladder and one from the tier above, so there is always someone to beat. The
+  draw replaces the current picks and scrolls the strip to that window. The chip stays lit only
+  while the picks are the ones it drew; touching a card puts the chip out, which is the honest
+  state. Tapping a lit chip draws again.
+- **The grid counter** "3 of 6 cars" sits by Start. When the grid is full the unpicked cards and
+  Add player dim; the counter says why, so nothing is greyed without an explanation next to it.
+- **Start race** is the primary 56 px button under the counter, right column, so it never moves.
+  A grid of one human and no opponents is allowed (a time trial); Start is never disabled.
+- **Portraits.** Flat vector faces, one style, generated from a small feature set per driver in
+  `src/portraits.ts` (head, hair or helmet, eyes, mouth, one prop such as glasses, a plaster, a
+  flower, a sweat drop) and coloured per driver, so all 21 are consistent and legible at 32 px
+  in the HUD and 96 px on a card. The features are data on the roster entry, the way the AI
+  profile is, and a hand-drawn illustration can replace any of them later. Two faces are jokes
+  the reader gets without a caption: Callow Rollover's portrait is upside down, The Dune's is a
+  dune.
+- **Remembered:** humans (names and colours), picked opponents, laps and the tier that drew them.
+  The first time it opens: Player 1 and the Rookie draw.
+- **Opponents screen** (from the menu) shows the same ladder as full cards in a four-tier grid,
+  read-only: tap flips a card to its flavour line with the strength and weakness from the
+  roster; "Race this one" on the back opens setup with the remembered humans and that one
+  driver. Drivers a human has beaten carry a small tick, remembered in localStorage: that is
+  the ladder you are climbing.
+- **Results** gets its podium now that there are faces: the first three on steps with their
+  portraits, then the rest as rows, each with flicks used, flips and the best flick distance.
+- **Viewports.** iPad landscape: both columns, four cards visible in the strip. Phone portrait:
+  one column, the strip is full-width and shows two and a half cards so it reads as scrollable.
+  Phone landscape: the card scrolls inside the overlay rather than shrinking.
+- **Testing.** `STOP=setup` and `STOP=opponents` in the screenshot script; the interaction is
+  walked with real clicks in Playwright: add, remove, pick, draw a tier, start.
+
+Original brief (kept for the details the reading does not restate):
+
 Two sections, then a footer with laps and Start.
 
 - **Players.** Rows: colour swatch (tappable, cycles through free colours), name field, remove.

@@ -156,9 +156,7 @@ async function main(): Promise<void> {
       // Back in the aim phase after a flick resolved: the ring returns until the next drag starts.
       if (game.phase === 'aim' && !cue.visible) showCue();
     },
-    raceOver: (placings) => {
-      if (!scenario) ui.showResults(placings);
-    },
+    raceOver: (placings) => ui.showResults(placings),
   }, scenario?.seed);
 
   function startRace(setups: PlayerSetup[], laps: number): void {
@@ -205,8 +203,6 @@ async function main(): Promise<void> {
   }
 
   const ui = new App({
-    openSetup: (onStart) => hud.showSetup(onStart),
-    hideSetup: () => hud.hideSetup(),
     startRace,
     setPaused: (p) => {
       paused = p;
@@ -223,7 +219,6 @@ async function main(): Promise<void> {
 
   if (scenario) {
     boot.dismiss();
-    hud.hideSetup();
     startRace(scenario.players, scenario.laps);
     (window as unknown as { __neppis: NeppisDebug }).__neppis = debugHandle();
     if (kit) {
@@ -232,7 +227,6 @@ async function main(): Promise<void> {
       renderKit(document.getElementById('kit')!);
     }
   } else {
-    hud.hideSetup();
     // Loaded: "Tap to play". The tap is the browser's user gesture, so audio is unlocked right here.
     boot.ready(() => {
       unlockAudio();

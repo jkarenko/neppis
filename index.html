@@ -79,6 +79,7 @@
         <div class="menu-word">NEPPIS</div>
         <div class="col">
           <button type="button" id="menuRace" class="btn btn-menu btn-primary"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4h11l-2 4 2 4H6"/></svg>Race</button>
+          <button type="button" id="menuOpponents" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6"/></svg>Opponents</button>
           <button type="button" id="menuSettings" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM10.3 3.5h3.4l.5 2.3 1.9 1.1 2.2-.8 1.7 3-1.7 1.5v2.2l1.7 1.5-1.7 3-2.2-.8-1.9 1.1-.5 2.3h-3.4l-.5-2.3-1.9-1.1-2.2.8-1.7-3 1.7-1.5v-2.2L4 9.1l1.7-3 2.2.8 1.9-1.1z"/></svg>Settings</button>
         </div>
         <div class="menu-foot muted" id="menuVersion"></div>
@@ -108,24 +109,38 @@
       </div>
     </div>
     <div id="setup" class="screen" hidden>
-      <form id="setupForm" class="card">
+      <form id="setupForm" class="card setup-card">
         <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Race</h2></div>
-        <p class="sub">Three flicks per turn. Stay on the track, keep the rubber side down.</p>
         <div class="setup-grid">
-          <div id="playerRows"></div>
-          <div class="setup-side">
-            <button type="button" id="addPlayer" class="btn btn-block">+ Add player</button>
+          <section class="setup-players">
+            <h3>Players</h3>
+            <div id="playerRows"></div>
+            <button type="button" id="addPlayer" class="btn btn-block"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add player</button>
+          </section>
+          <section class="setup-opponents">
+            <div class="setup-oppo-head"><h3>Opponents</h3><div class="tiers" id="tiers"></div></div>
+            <div class="strip-scroll" id="driverStrip"></div>
+          </section>
+          <div class="setup-foot">
             <div class="strip"><span>Laps</span><span class="stepper"><button type="button" id="lapsMinus" class="btn btn-icon" aria-label="Fewer laps"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span id="lapsValue" class="value num">1</span><button type="button" id="lapsPlus" class="btn btn-icon" aria-label="More laps"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
-            <input type="hidden" id="laps" value="1" />
-            <button type="submit" id="start" class="btn btn-primary btn-block">Start race</button>
+            <span class="muted num" id="gridCount"></span>
+            <button type="submit" id="start" class="btn btn-primary">Start race</button>
           </div>
         </div>
       </form>
     </div>
+    <div id="opponents" class="screen" hidden>
+      <div class="card screen-card roster-card">
+        <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Opponents</h2></div>
+        <p class="sub">The ladder, easiest first. Tap a card to turn it over.</p>
+        <div id="roster"></div>
+      </div>
+    </div>
     <div id="results" class="screen" hidden>
       <div class="card screen-card">
         <h2 id="resultsTitle"></h2>
-        <ol id="resultsList"></ol>
+        <div class="podium" id="podium"></div>
+        <ol class="results-rows" id="resultsList"></ol>
         <div class="col">
           <button type="button" id="resultsAgain" class="btn btn-primary btn-block">Race again</button>
           <button type="button" id="resultsSetup" class="btn btn-block">Change setup</button>

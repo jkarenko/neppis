@@ -23,6 +23,10 @@ export interface PlayerSetup {
   ai: boolean;
   /** How an AI drives; the default driver when missing. */
   profile?: AiProfile;
+  /** Roster id of an AI driver, for the portrait. */
+  driverId?: string;
+  /** Car colour; the grid slot's colour when missing. */
+  color?: number;
   pose?: TrackPose;
 }
 
@@ -33,7 +37,12 @@ export interface Player {
   profile?: AiProfile;
   /** The player's last flick ended on the roof. */
   flipped: boolean;
+  driverId?: string;
   color: number;
+  /** Race stats for the results: flicks taken, flips, and the longest single flick in world units. */
+  flicks: number;
+  flips: number;
+  bestFlick: number;
   car: Car;
   lap: number;
   prevT: number;
@@ -107,7 +116,7 @@ export class Game {
     const slots = this.track.startSlots(setups.length);
     this.players = setups.map((s, i) => {
       const slot = s.pose ? this.resolvePose(s.pose) : slots[i];
-      const car = new Car(this.world, PLAYER_COLORS[i % PLAYER_COLORS.length], slot.x, slot.z, this.track.heightAt(slot.x, slot.z), slot.yaw);
+      const car = new Car(this.world, s.color ?? PLAYER_COLORS[i % PLAYER_COLORS.length], slot.x, slot.z, this.track.heightAt(slot.x, slot.z), slot.yaw);
       this.scene.add(car.mesh);
       const q = this.track.query(slot.x, slot.z);
       // The grid sits just behind the start line, so the first crossing begins lap 0. A car placed by pose is
@@ -118,8 +127,12 @@ export class Game {
         name: s.name,
         ai: s.ai,
         profile: s.profile,
+        driverId: s.driverId,
         flipped: false,
         color: car.color,
+        flicks: 0,
+        flips: 0,
+        bestFlick: 0,
         car,
         lap,
         prevT: q.t,
@@ -229,6 +242,7 @@ export class Game {
     this.pathLen = 0;
     this.flightTime = 0;
     car.flick(power);
+    this.current.flicks++;
     this.phase = 'flying';
     this.events.flick(this.current);
     this.events.changed();
@@ -316,6 +330,8 @@ export class Game {
     }
     this.lastOutcome = outcome;
     p.flipped = outcome === 'kelli';
+    if (outcome === 'kelli') p.flips++;
+    else if (outcome === 'ok') p.bestFlick = Math.max(p.bestFlick, this.pathLen);
 
     for (const pl of this.players) {
       const pp = pl.car.position;

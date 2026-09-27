@@ -209,7 +209,7 @@ lets a test aim, flick and step the physics synchronously until the car settles,
 numbers instead of waiting on wall-clock time. `pnpm scenario` drives it from the terminal and
 `pnpm screenshot` accepts a scenario URL. The small loop in `src/tracks/test.ts` is the default
 track: a straight from the start line, a right-hand bend, then the jump and the dip on the back
-straight. Presets in `src/scenario.ts`: straight, ridge, bend, reversed, rival, jump.
+straight. Presets in `src/scenario.ts`: straight, ridge, bend, reversed, rival, jump, finish (one flick from the line, ends the race).
 
 Outcomes measured in the browser should be confirmed in the Node tools before being relied on for
 AI tuning, and the other way round for input and camera behaviour: they share the track and physics
