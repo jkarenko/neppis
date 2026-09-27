@@ -57,11 +57,9 @@ Design reading (2026-09-27, before building):
 - **Continuity.** Its background is the scene's own sky over a band of sand, so when it fades the
   track is already "behind" it and nothing jumps. Same tokens as everything else.
 - **Content, centred, in reading order:** the mark, which needs no font so it paints at once: the
-  Formula-Neppis silhouette in side view, drawn from a photo of the car and the user's sketch
-  (gallery refs and sketches, 2026-09-27): a teardrop with the point forward, a round tall tail
-  with the driver's head and screen on the hump, one long taper to the nose, big wheels with the
-  rear one under the hump; set at the wordmark's width as a lockup; then the wordmark NEPPIS in
-  Inter 800 (shown when the font is ready, the existing 2 s
+  author's own hand-drawn Formula-Neppis (the gallery sketch of 2026-09-27), converted from its
+  vector strokes to `public/mark.svg` in the ink colour with the hatching kept, set at the
+  wordmark's width as a lockup; then the wordmark NEPPIS in Inter 800 (shown when the font is ready, the existing 2 s
   fallback applies), the strap "Finnish flick-car racing" in muted, then the progress bar with a
   12 px label naming the step (physics, track, cars). Nothing else: no version, no settings.
 - **Ready state.** The bar becomes the primary 56 px pill "Tap to play"; on a fine pointer it
