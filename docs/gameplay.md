@@ -34,7 +34,9 @@ and leaving the track is *off track*. The code still calls the first two kelli a
   not a flick, and releasing it simply cancels. The ribbon colour shows the band: blue gentle
   (under 0.3), green safe, yellow brisk (0.6 and up), red risky (0.8 and up).
 - **The nose follows the aim.** While aiming, the car is turned on the spot to face the flick
-  direction, so today any heading can be chosen before every flick. Section 3 changes this.
+  direction, so today any heading can be chosen before every flick, and the turn is done by
+  moving the physics bodies, which lets the track and other cars push the car about while it
+  is being aimed. Section 3 changes both.
 - **Launch.** Release hands the car over already rolling along its nose at
   `20 × power^0.5` units per second with the wheels spinning to match, as if it had run up on
   flat sand. Nothing pushes it after that: rolling, skidding, grip, the ridges, the jump and
@@ -51,7 +53,7 @@ and leaving the track is *off track*. The code still calls the first two kelli a
   count goes down, and after a short pause (0.2 s, or 0.6 s after a penalty) the next flick or
   the next turn begins.
 
-## 3. Turning: the 45° limit (planned)
+## 3. Turning and aiming (planned changes)
 
 Today the nose turns freely to the aim, so a car that ends a flick facing backwards can simply
 be aimed forwards again. The planned rule:
@@ -73,6 +75,27 @@ be aimed forwards again. The planned rule:
   point, and the tip midpoint means the direction of travel there. So a car returned after
   leaving the track in a bend is facing the way it was going, which is usually towards the
   edge: the limit turns that into the actual penalty.
+- **The aim is a preview, not a physics move.** Today each pointer move teleports all five
+  rigid bodies (chassis and four wheels) to the new heading and wakes them. The wheels sit away
+  from the centre, so turning on the spot sweeps them through a ridge or a neighbouring car and
+  the solver shoves the overlapping bodies apart: the car drifts while being aimed, and rivals
+  can be nudged for free. Planned: while aiming, only the mesh turns. The bodies stay asleep
+  where the last flick left them. At release the car is placed once at the aim pose and
+  launched in the same physics step, so a car parked against a rival simply starts its flick
+  in contact with it. The AI's visible nose turn before its flick uses the same preview.
+- **The preview conforms to the track.** The turn is about the car's own up axis, the normal of
+  the surface it rests on, not world up: a car leaning on the ridge keeps its lean while the
+  nose swings, and the 45° wedge is measured about that same axis. After each swing the
+  resting pose is re-fitted: track height is sampled under the four wheel positions, a plane is
+  fitted through them, and the chassis takes that pitch and roll. Penalty placements use the
+  same fit instead of the flat rest height they use today.
+- **The launch stays horizontal for now.** The flick launches along the nose projected onto the
+  ground plane, as it does today, so a nose that points down the ridge slope still launches
+  level. Launching along the fitted forward instead (tangent to the surface, so a downhill
+  nose drives into the floor and may flip end over end, and an uphill nose goes airborne off
+  the ridge) is an experiment for later: measure it on the calibration oval first, flips and
+  distances by heading and power, and only then decide. It would also invalidate the flat
+  distance table the AI plans with.
 - **The AI plays by the same rule.** The planner's search for the longest safe straight is
   restricted to the wedge, and a driver whose safe line is outside it takes the best point at
   the edge (see `drivers.md`).
