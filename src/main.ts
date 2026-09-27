@@ -6,6 +6,8 @@ import { TRACK_BY_NAME } from './tracks/index.ts';
 import { Game, type Player, type PlayerSetup } from './game.ts';
 import { scenarioFromUrl, PRESETS, type CameraMode, type GameState, type NeppisDebug, type Scenario } from './scenario.ts';
 import { renderKit } from './kit.ts';
+import { boot } from './boot.ts';
+import { unlockAudio } from './audio.ts';
 import { FlickIndicator } from './indicator.ts';
 import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
@@ -18,7 +20,9 @@ async function main(): Promise<void> {
   const scenario: Scenario | null = kit
     ? { name: 'kit', track: 'test', players: PRESETS.straight.players!, seed: 1, cam: 'chase', laps: 1 }
     : scenarioFromUrl();
+  boot.step('Loading physics', 0.1);
   const world = await initPhysics();
+  boot.step('Building the track', 0.4);
 
   const app = document.getElementById('app')!;
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,6 +62,7 @@ async function main(): Promise<void> {
   const track = new Track(trackDef);
   scene.add(track.createMesh());
   track.createCollider(world);
+  boot.step('Fetching the cars', 0.85);
 
   const indicator = new FlickIndicator();
   scene.add(indicator.group);
@@ -198,6 +203,7 @@ async function main(): Promise<void> {
   });
 
   if (scenario) {
+    boot.dismiss();
     hud.hideSetup();
     startRace(scenario.players, scenario.laps);
     (window as unknown as { __neppis: NeppisDebug }).__neppis = debugHandle();
@@ -207,7 +213,12 @@ async function main(): Promise<void> {
       renderKit(document.getElementById('kit')!);
     }
   } else {
-    hud.showSetup(startRace);
+    hud.hideSetup();
+    // Loaded: "Tap to play". The tap is the browser's user gesture, so audio is unlocked right here.
+    boot.ready(() => {
+      unlockAudio();
+      hud.showSetup(startRace);
+    });
   }
 
   // Frame statistics overlay: add ?stats to the URL.
@@ -377,9 +388,5 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error(err);
-  const el = document.getElementById('message');
-  if (el) {
-    el.textContent = `Failed to start: ${err instanceof Error ? err.message : String(err)}`;
-    el.classList.add('show');
-  }
+  boot.fail(`Could not start: ${err instanceof Error ? err.message : String(err)}`);
 });

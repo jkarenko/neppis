@@ -48,10 +48,31 @@ Rules for the machine:
 ## 2. Screens
 
 ### Boot / title
-- Inline in `index.html`, no dependency on the bundle: wordmark "NEPPIS", one-line strap, a thin
-  progress bar. The bundle reports progress in three steps (wasm, track, cars).
-- Ready state: bar turns into a pill "Tap to play" with a slow pulse. Any click or key advances.
-  Reduced motion: no pulse.
+
+Design reading (2026-09-27, before building):
+
+- **Job.** Four things at once: paint before the bundle so the first frame is never blank; show
+  that loading is happening and roughly how far; be the user gesture that unlocks audio; set the
+  tone in one glance. It is not a menu and holds no choices.
+- **Continuity.** Its background is the scene's own sky over a band of sand, so when it fades the
+  track is already "behind" it and nothing jumps. Same tokens as everything else.
+- **Content, centred, in reading order:** a mark that needs no font (the car glyph, so it paints
+  at once), the wordmark NEPPIS in Inter 800 (shown when the font is ready, the existing 2 s
+  fallback applies), the strap "Finnish flick-car racing" in muted, then the progress bar with a
+  12 px label naming the step (physics, track, cars). Nothing else: no version, no settings.
+- **Ready state.** The bar becomes the primary 56 px pill "Tap to play"; on a fine pointer it
+  reads "Click or press any key". The whole screen accepts the tap, the pill is the affordance,
+  not the only target. A gentle pulse says it is live; reduced motion removes the pulse.
+- **The tap.** Creates and resumes the audio context, plays a silent buffer, and the screen fades
+  in 250 ms (0 with reduced motion) to reveal the scene and whatever comes next (today the
+  setup form, from step 5 the menu). Keydown does the same.
+- **Failure.** If the game cannot start, the screen stays and says so in one line in the danger
+  colour, with a Retry pill that reloads. Never a blank page with a console error.
+- **Viewports.** Phone portrait: wordmark 40 px, bar 220 px wide. Phone landscape (393 tall):
+  everything fits in one column without scrolling, wordmark 36 px. Safe-area insets respected.
+- **Testing.** Scenario and kit URLs skip the title so headless runs are not blocked; `?boot=hold`
+  freezes the loading state so it can be captured. The screenshot script taps the title when it
+  is showing.
 
 ### Menu
 - Four large items, stacked, 56 px tall, full width on phones, 360 px wide column on tablets and
@@ -175,14 +196,17 @@ there is no desktop.
    through it.
 0b. Turn wedge and mesh-only aim preview (done 2026-09-27), see `gameplay.md` section 3. The
    wedge drawn on the ground is still to do, in step 7.
-Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31. First gallery review round (three issues: ridge turning, icons and HUD redundancy, setup form) 14:38 to 15:05; second pass on the same three (settled release, tip icon, Start in the side column) 15:08 to 15:25; third pass (release was clearing the aim on a real drag; setup card height) 15:30 to 15:52.
+Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31. First gallery review round (three issues: ridge turning, icons and HUD redundancy, setup form) 14:38 to 15:05; second pass on the same three (settled release, tip icon, Start in the side column) 15:08 to 15:25; third pass (release was clearing the aim on a real drag; setup card height) 15:30 to 15:52. Step 4 (boot and title) 16:05 to 16:30.
 
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
    baseline. Done 2026-09-27: tokens in `src/style.css`, components (.btn, .chip, .toast, .row,
    .field, .stepper, .switch, .card, .driver), icons in `src/icons.ts`, the kit in `src/kit.ts`
    at `?kit`, captured with `FULL=1 pnpm screenshot out.png 'http://localhost:5175/?kit'`. The
    interim setup and results overlays already wear the family.
-2. Boot/title screen with progress and the audio gate.
+2. Boot/title screen with progress and the audio gate. Done 2026-09-27: markup in `index.html`
+   with a tiny inline state script, styles in the boot section of `style.css`, `src/boot.ts` and
+   `src/audio.ts`. Captures: `HOLD=1 pnpm screenshot out.png 'http://localhost:5175/?boot=hold'`
+   for loading, `HOLD=1` without the parameter for the title.
 3. `src/app.ts` state machine, menu, pause, results. Old setup form removed.
 4. Roster data, portraits, opponent cards; setup screen on top of them.
 5. `AiProfile` knobs in `ai.ts`, `simrace` roster mode, tune the ladder.

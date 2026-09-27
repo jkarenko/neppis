@@ -51,11 +51,38 @@
   :root { --t-fast: 0ms; --t-base: 0ms; }
 }
 
-/* Keep the start screen hidden until Inter has loaded (index.html), so no text is ever painted in a fallback font. */
-html:not(.fonts-ready) #setup { visibility: hidden; }
+/* Keep text hidden until Inter has loaded (index.html), so none is ever painted in a fallback font. The boot mark
+   and bar need no font and paint at once. */
+html:not(.fonts-ready) #setup, html:not(.fonts-ready) .boot-word, html:not(.fonts-ready) .boot-strap, html:not(.fonts-ready) .boot-label, html:not(.fonts-ready) .boot-play { visibility: hidden; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+/* ---- Boot / title ---- */
+#boot { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left); color: var(--text); background: linear-gradient(to bottom, #cfe3f2 0%, #cfe3f2 55%, #d9c9a6 100%); cursor: pointer; user-select: none; -webkit-user-select: none; transition: opacity var(--t-base); }
+#boot[hidden] { display: none; }
+#boot.is-leaving { opacity: 0; pointer-events: none; }
+.boot-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.boot-mark { width: 64px; height: 64px; fill: none; stroke: #1d2430; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.boot-word { font-size: 72px; font-weight: 800; letter-spacing: 0.12em; color: #1d2430; line-height: 1; margin-top: 4px; }
+.boot-strap { font-size: var(--fs-control); color: #5c6570; }
+.boot-progress { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; min-height: var(--h-primary); justify-content: center; }
+.boot-bar { width: 240px; height: 4px; border-radius: 2px; background: rgba(29, 36, 48, 0.18); overflow: hidden; }
+.boot-bar i { display: block; height: 100%; width: 0; border-radius: 2px; background: #1d2430; transition: width var(--t-base); }
+.boot-label { font-size: var(--fs-label); color: #5c6570; }
+#boot .boot-play { display: none; margin-top: 22px; background: #1d2430; color: var(--text); animation: bootPulse 1.6s ease-in-out infinite; }
+.boot-play .if-fine { display: none; }
+@media (pointer: fine) { .boot-play .if-touch { display: none; } .boot-play .if-fine { display: inline; } }
+@keyframes bootPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .boot-play { animation: none; } }
+#boot .boot-fail { display: none; flex-direction: column; align-items: center; gap: 12px; margin-top: 22px; }
+.boot-failmsg { color: var(--danger); font-size: var(--fs-body); max-width: 320px; }
+#boot.is-ready .boot-progress, #boot.is-failed .boot-progress { display: none; }
+#boot.is-ready .boot-play { display: inline-flex; }
+#boot.is-failed .boot-fail { display: flex; }
+#boot.is-failed .btn { background: #1d2430; color: var(--text); border-color: transparent; }
+@media (max-width: 600px) { .boot-word { font-size: 44px; } .boot-bar { width: 220px; } }
+@media (max-height: 420px) { .boot-mark { width: 40px; height: 40px; } .boot-word { font-size: 36px; } .boot-progress, .boot-play, .boot-fail { margin-top: 12px; } .boot-inner { gap: 6px; } }
 
 /* ---- Components ---- */
 .glass { background: var(--surface); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }

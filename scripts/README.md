@@ -12,7 +12,7 @@ browser. None ship with the game.
 | `pnpm terrain-risk` | Flicks over the jump and into the ridge to see whether terrain alone causes kellis. |
 | `pnpm surfcheck` | Casts rays onto the track colliders and fails if any lands off the physics surface. |
 | `pnpm scenario` | Loads a scenario in the headless browser (`pnpm scenario ridge 0,0.6 -20,0.4`), drives it through `window.__neppis`, prints the game state as JSON after each flick; `drag:heading,power` flicks through real mouse events instead of the debug handle. `OUT=path.png` for a shot before and after each flick, `AIM=1` to hold the first aim in the before shot, `VIEWPORT`, `URL`. Presets and URL parameters are in `src/scenario.ts`. |
-| `pnpm screenshot` | Screenshots the running dev server with Playwright. `VIEWPORT=iphone,ipad-landscape,1920x1080@2` takes presets or `WxH[@scale]`, `all` for every preset at 1x plus a contact sheet; default is `ipad-landscape@2`, the iPad's real resolution. `DRAG_PX`, `WAIT_MS`, `STATS=1`, `FULL=1` for the whole scrollable page. The URL may carry `?scenario=` or `?kit` (every UI component in every state). |
+| `pnpm screenshot` | Screenshots the running dev server with Playwright. `VIEWPORT=iphone,ipad-landscape,1920x1080@2` takes presets or `WxH[@scale]`, `all` for every preset at 1x plus a contact sheet; default is `ipad-landscape@2`, the iPad's real resolution. `DRAG_PX`, `WAIT_MS`, `STATS=1`, `FULL=1` for the whole scrollable page, `HOLD=1` to shoot the title screen instead of tapping through it (`?boot=hold` in the URL holds the loading state). The URL may carry `?scenario=` or `?kit` (every UI component in every state). |
 
 ## Probes (`probes/`, run by hand when something misbehaves)
 

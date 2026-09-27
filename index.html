@@ -13,6 +13,50 @@
     </script>
   </head>
   <body>
+    <!-- Boot / title. Painted by the stylesheet before the bundle runs; the tiny script below owns its state. -->
+    <div id="boot">
+      <div class="boot-inner">
+        <svg class="boot-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16l-3-5H7zM4 15l1.5 2.5h13L20 15M7.5 17.5v2.5M16.5 17.5v2.5"/></svg>
+        <div class="boot-word">NEPPIS</div>
+        <div class="boot-strap">Finnish flick-car racing</div>
+        <div class="boot-progress" role="status" aria-live="polite">
+          <div class="boot-bar"><i id="bootBar"></i></div>
+          <div class="boot-label" id="bootLabel">Loading</div>
+        </div>
+        <button type="button" class="btn btn-primary boot-play" id="bootPlay"><span class="if-touch">Tap to play</span><span class="if-fine">Click or press any key</span></button>
+        <div class="boot-fail">
+          <div class="boot-failmsg" id="bootFail"></div>
+          <button type="button" class="btn" id="bootRetry">Retry</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Boot state: the module reports steps through window.__boot; a tap or key anywhere dismisses the ready screen.
+      (function () {
+        var el = document.getElementById('boot');
+        var bar = document.getElementById('bootBar');
+        var label = document.getElementById('bootLabel');
+        var hold = new URLSearchParams(location.search).get('boot') === 'hold';
+        var onGo = null;
+        var ready = false;
+        function go() {
+          if (!ready) return;
+          ready = false;
+          el.classList.add('is-leaving');
+          setTimeout(function () { el.hidden = true; }, 260);
+          if (onGo) onGo();
+        }
+        window.__boot = {
+          step: function (name, frac) { label.textContent = name; bar.style.width = Math.round(frac * 100) + '%'; },
+          ready: function (cb) { if (hold) return; bar.style.width = '100%'; onGo = cb; ready = true; el.classList.add('is-ready'); },
+          fail: function (msg) { el.classList.remove('is-ready'); el.classList.add('is-failed'); document.getElementById('bootFail').textContent = msg; },
+          dismiss: function () { el.hidden = true; },
+        };
+        el.addEventListener('click', go);
+        window.addEventListener('keydown', function (e) { if (!e.repeat) go(); });
+        document.getElementById('bootRetry').addEventListener('click', function () { location.reload(); });
+      })();
+    </script>
     <div id="app"></div>
     <div id="hud">
       <div id="players"></div>
