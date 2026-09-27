@@ -188,8 +188,9 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 #setup[hidden], #results[hidden] { display: none; }
 #setupForm, #results > div { width: min(92vw, 560px); }
 /* The racer list and, beside it, the controls that must never move when a row is added. */
-.setup-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; margin: 0 0 16px; }
-.setup-side { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.setup-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+.setup-side { display: flex; flex-direction: column; gap: 12px; align-items: stretch; min-width: 200px; }
+.setup-side .btn-primary { margin-top: 8px; }
 @media (max-width: 600px) {
   .setup-grid { grid-template-columns: 1fr; }
 }

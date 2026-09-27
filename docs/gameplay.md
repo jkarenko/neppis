@@ -81,12 +81,16 @@ facing backwards could simply be aimed forwards again.
   launched in the same physics step, so a car parked against a rival simply starts its flick
   in contact with it. The AI's visible nose turn before its flick uses the same preview. An aim
   let go without a flick puts the nose back; previews are cleared at every turn start.
-- **The preview conforms to the track.** The turn is about the car's own up axis, the normal of
-  the surface it rests on, not world up: a car leaning on the ridge keeps its lean while the
-  nose swings, and the 45° wedge is measured about that same axis. After each swing the
-  resting pose is re-fitted: track height is sampled under the four wheel positions, a plane is
-  fitted through them, and the chassis takes that pitch and roll. Penalty placements use the
-  same fit instead of the flat rest height they use today.
+- **The preview conforms to the track.** After each swing the resting pose is re-fitted: track
+  height is sampled under the four wheel positions, a plane is fitted through them for pitch
+  and roll, and the car is lifted until no wheel is under the ground, since on a crest four
+  contact points are not coplanar. The 45° wedge is measured from the heading the car rests
+  with. Penalty placements use the same fit.
+- **Release is a real rest.** The bodies are placed at the preview pose and the physics is
+  stepped for a fifth of a second before the launch, so the flick starts from settled contact
+  however uneven the ground (on a crest a rigid car sits on three wheels). Without this, two
+  wheels started sunk in the ridge and two hanging, and the solver's shove sent the car along
+  the ridge instead of along the nose (found 2026-09-27 from a gallery review).
 - **The launch stays horizontal for now.** The flick launches along the nose projected onto the
   ground plane, as it does today, so a nose that points down the ridge slope still launches
   level. Launching along the fitted forward instead (tangent to the surface, so a downhill
@@ -109,12 +113,11 @@ facing backwards could simply be aimed forwards again.
   second flick cut across the infield from the start straight to the back straight and was
   scored clean, with its lap count going backwards. The rule should also catch a flight that
   left the track and came back on, placing the car at the last on-track point. Not fixed yet.
-- **The ridge is a kerb.** Measured 2026-09-27 with `scripts/probes/ridge-turn.ts`: a car straddling the
-  ridge, nose turned 40° inward, launched at 0.5 power, goes where the nose points for the first
-  few centimetres and is then deflected along the ridge, stopped, or flipped, because the ridge is
-  0.12 tall, the same as the wheel radius. At 0.06 the car crosses it on its wheels; at 0.03 it
-  travels within 10° of its nose. `TRACK_DETAIL.ridgeHeight` is the knob; the AI ladder was tuned
-  at 0.12. Not decided yet.
+- **The ridge.** With the settled release, a car straddling the ridge with the nose turned 40°
+  inward and launched at 0.5 power goes along the aim on its wheels from every position tried
+  (`scripts/probes/ridge-turn.ts`). The ridge is 0.12 tall, the same as the wheel radius, and
+  still yaws a car that rolls down its inner ramp; `TRACK_DETAIL.ridgeHeight` exists to try a
+  softer ridge, the AI ladder was tuned at 0.12.
 - **Open until tried.** Whether the limit is per flick (as above) or per three-flick turn.
   Per flick is the assumption. Per turn would make a spin cost most of a round and is probably
   too harsh, but it is a one-line change if 45° per flick turns out to be too forgiving.

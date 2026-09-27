@@ -55,7 +55,15 @@ export function restPose(x: number, z: number, yaw: number, heightAt: HeightAt):
     .setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), pitch))
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), roll));
-  const y = (h[0] + h[1] + h[2] + h[3]) / 4 + CAR.restHeight + 0.02;
+  let y = (h[0] + h[1] + h[2] + h[3]) / 4 + CAR.restHeight;
+  // Four contact points are not coplanar on a crest: the plane leaves some wheels under the ground. Lift until
+  // the lowest wheel just clears its ground; the physics settles the rest at release.
+  let sink = -Infinity;
+  for (const off of WHEEL_OFFSETS) {
+    const w = new THREE.Vector3(...off).applyQuaternion(q);
+    sink = Math.max(sink, heightAt(x + w.x, z + w.z) - (y + w.y - CAR.wheelRadius));
+  }
+  y += Math.max(0, sink) + 0.005;
   return { x, y, z, q };
 }
 
@@ -260,9 +268,16 @@ export class Car {
     this.sync();
   }
 
-  /** Move the bodies to the previewed pose, ready to launch. */
-  commitPreview(): void {
-    if (this.preview) this.placeAt(this.preview);
+  /**
+   * Move the bodies to the previewed pose and let them settle onto the ground for a moment, so the launch starts
+   * from real contact however uneven the ground is. Everything else in the world is at rest while a flick is being
+   * aimed, so stepping it here moves nothing but this car, by millimetres.
+   */
+  commitPreview(settleSteps = 48): void {
+    if (!this.preview) return;
+    this.placeAt(this.preview);
+    for (let i = 0; i < settleSteps; i++) this.world.step();
+    this.sync();
   }
 
   /**

@@ -16,9 +16,9 @@ const PATHS: Record<string, string> = {
   flag: 'M6 21V4h11l-2 4 2 4H6',
   trophy: 'M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6',
   // A car on its roof: the wide side (with the wheels) up, the narrow roof down on the ground line.
-  flip: 'M4 10h16l-3 5H7zM4 10l1.5-2.5h13L20 10M7.5 7.5v-2M16.5 7.5v-2M4 17h16',
-  // A car on its side: the wide side (with the wheels) faces left, the roof faces right.
-  tip: 'M7 4v16l7-3V7zM7 4l2.5-1.5 6.5 3M7 20l2.5 1.5 6.5-3M9.5 4.5v2M9.5 17.5v2M17 20h3',
+  flip: 'M4 9h16l-3 5H7zM4 9l1.5-2.5h13L20 9M7.5 6.5v-2.5M16.5 6.5v-2.5M4 19.5h16',
+  // The flipped car turned a quarter turn clockwise, wheels to the right, the same gap above the road.
+  tip: 'M14.5 3.5v13l-4.5-2.5v-8zM14.5 3.5l2.5 1.3v10.4l-2.5 1.3M17 6.5h2.5M17 13.5h2.5M4 19.5h16',
   // A road, two edge lines, with a question mark between them.
   offtrack: 'M6 3v18M18 3v18M10.5 9.5a1.5 1.5 0 1 1 3 0c0 1-1.5 1.3-1.5 3M12 16h0',
   info: 'M12 8h0M12 11v6M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
