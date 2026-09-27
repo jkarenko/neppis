@@ -40,8 +40,6 @@ export interface AiProfile {
   foresight: number;
   /** Reluctance (0..1) to shift sideways when nothing is gained by it: the driver holds a lane. */
   laneHold: number;
-  /** A rival on the line ends it (1) or is driven through as if the track were empty (0, the maniacs). */
-  avoid: number;
 }
 
 /** What the planner knows about the race beyond the car itself. */
@@ -67,7 +65,6 @@ export const DEFAULT_AI: AiProfile = {
   lineBias: 0,
   foresight: 0.5,
   laneHold: 0.5,
-  avoid: 0.7,
 };
 
 const NO_RACE: RaceContext = { place: 1, rivals: [], afterFlip: false };
@@ -78,8 +75,6 @@ const NEXT_TURNS = [0, 0.25, -0.25, 0.5, -0.5, MAX_TURN, -MAX_TURN];
 const NEXT_WEIGHT = 0.35;
 /** Track length forfeited per unit of sideways shift at laneHold 1. */
 const LANE_COST = 0.3;
-/** A rival this close to the line stops the car; a line further off passes beside it. */
-const RIVAL_RADIUS = CAR.width + 0.12;
 
 export function wrapAngle(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
@@ -144,27 +139,12 @@ function nextReach(track: Track, x: number, z: number, yaw: number, p: AiProfile
   return best;
 }
 
-/** Distance along a line from (x, z) at which it comes within RIVAL_RADIUS of a rival, or null if it does not. */
-function rivalOnLine(x: number, z: number, dir: { x: number; z: number }, len: number, rivals: RaceContext['rivals']): number | null {
-  let first: number | null = null;
-  for (const r of rivals) {
-    const rx = r.x - x;
-    const rz = r.z - z;
-    const t = rx * dir.x + rz * dir.z;
-    if (t < 0.3 || t > len + RIVAL_RADIUS) continue;
-    const side = Math.abs(rx * dir.z - rz * dir.x);
-    if (side > RIVAL_RADIUS) continue;
-    const at = Math.max(0.3, t - RIVAL_RADIUS);
-    if (first === null || at < first) first = at;
-  }
-  return first;
-}
-
 /**
  * Pick a flick. In order: off the track, get back on; a rival within reach may be hit instead of the line;
- * otherwise the best straight line ahead that stays inside the track: scored by the track distance it gains
- * (cut at a rival for a driver who avoids them), what the next flick could gain from where it lands, the side
- * of the bend it favours and the lane change it costs. Its length is scaled by aggression and the race
+ * otherwise the best straight line ahead that stays inside the track: scored by the track distance it gains,
+ * what the next flick could gain from where it lands, the side of the bend it favours and the lane change it
+ * costs. Rivals on the line are driven through: a bump keeps the flicker's momentum, and every way of not
+ * bumping that was tried cost pace (docs/drivers.md). Its length is scaled by aggression and the race
  * situation, with the power that lands there. The nose may only turn FLICK.maxTurnDeg from the heading the car
  * rests with; a line outside that wedge is pulled to its edge and the power cut to what stays on the track along
  * the pulled line.
@@ -203,10 +183,9 @@ export function planFlick(track: Track, car: Car, rng: Rng, p: AiProfile = DEFAU
 
   // Every straight line to a point ahead in one of five lanes, or the car's own, that stays inside the track with
   // a margin from the edge that a steady hand can afford to shave (the whole car has to stay on the floor: a wheel
-  // on the ridge ramp stops it like a kerb). Each is scored by the track distance it gains, cut at a rival for a
-  // driver who avoids them, plus what the next flick could gain from where this one lands, plus the side of the
-  // bend it favours, minus the sideways shift it costs. The longest line no longer wins by itself: one that
-  // arrives at the bend already turned towards it does.
+  // on the ridge ramp stops it like a kerb). Each is scored by the track distance it gains, plus what the next
+  // flick could gain from where this one lands, plus the side of the bend it favours, minus the sideways shift it
+  // costs. The longest line no longer wins by itself: one that arrives at the bend already turned towards it does.
   const margin = Math.min(hw - 0.1, CAR.width / 2 + 0.06 + 3 * p.aimNoise);
   const band = hw - margin;
   const own = Math.max(-band, Math.min(band, q.d));
@@ -215,44 +194,46 @@ export function planFlick(track: Track, car: Car, rng: Rng, p: AiProfile = DEFAU
   let bestS = 0.5;
   let best = track.pointAt(track.indexOffset(q.index, 3)).clone();
   let bestScore = -Infinity;
+
+  /** Score a line to (tx, tz), s along the track at lateral off; true if the line is clear of the edges. */
+  const consider = (tx: number, tz: number, s: number, off: number, bend: number): boolean => {
+    const dx = tx - pos.x;
+    const dz = tz - pos.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.5) return false;
+    const dir = { x: dx / len, z: dz / len };
+    if (clearDistance(track, pos.x, pos.z, dir, len, margin) < len) return false;
+    // The car lands short of the target by the aggression scaling, along the same line.
+    const landLen = len * Math.min(1, Math.max(1.5, s * aggression) / s);
+    const gain = s;
+    const side = Math.abs(bend) > 0.02 ? Math.sign(bend) * Math.sign(off) : 0; // 1 = inside of the bend
+    let score = gain + side * p.lineBias - p.laneHold * LANE_COST * Math.abs(off - own);
+    if (p.foresight > 0) {
+      const yaw = Math.atan2(-dz, dx);
+      score += p.foresight * NEXT_WEIGHT * nextReach(track, pos.x + dir.x * landLen, pos.z + dir.z * landLen, yaw, p, margin);
+    }
+    if (score > bestScore) {
+      best = { x: tx, y: 0, z: tz } as typeof best;
+      bestScore = score;
+      bestS = gain;
+    }
+    return true;
+  };
+
+  const bendAt = (idx: number) => {
+    const tg = track.tangentAt(idx);
+    const ahead = track.tangentAt(track.indexOffset(idx, 3));
+    return tg.x * ahead.z - tg.z * ahead.x; // > 0: the track bends right
+  };
   let missed = 0;
   for (let s = 1; s <= 32 && missed < 4; s += 0.5) {
     const idx = track.indexOffset(q.index, s);
     const c = track.pointAt(idx);
     const tg = track.tangentAt(idx);
-    const ahead = track.tangentAt(track.indexOffset(idx, 3));
-    const bend = tg.x * ahead.z - tg.z * ahead.x; // > 0: the track bends right
+    const bend = bendAt(idx);
     let found = false;
     for (const off of lateral) {
-      const tx = c.x + -tg.z * off;
-      const tz = c.z + tg.x * off;
-      const dx = tx - pos.x;
-      const dz = tz - pos.z;
-      const len = Math.hypot(dx, dz);
-      if (len < 0.5) continue;
-      const dir = { x: dx / len, z: dz / len };
-      if (clearDistance(track, pos.x, pos.z, dir, len, margin) < len) continue;
-      found = true;
-      // The car lands short of the target by the aggression scaling, along the same line.
-      const landLen = len * Math.min(1, Math.max(1.5, s * aggression) / s);
-      // A rival on the line is where it ends for a driver who avoids them: the flick is shortened to stop there,
-      // so a line that passes beside the rival wins over a longer one through it.
-      let gain = s;
-      if (p.avoid > 0) {
-        const at = rivalOnLine(pos.x, pos.z, dir, landLen, race.rivals);
-        if (at !== null) gain = at + (s - at) * (1 - p.avoid);
-      }
-      const side = Math.abs(bend) > 0.02 ? Math.sign(bend) * Math.sign(off) : 0; // 1 = inside of the bend
-      let score = gain + side * p.lineBias - p.laneHold * LANE_COST * Math.abs(off - own);
-      if (p.foresight > 0) {
-        const yaw = Math.atan2(-dz, dx);
-        score += p.foresight * NEXT_WEIGHT * nextReach(track, pos.x + dir.x * landLen, pos.z + dir.z * landLen, yaw, p, margin);
-      }
-      if (score > bestScore) {
-        best = { x: tx, y: 0, z: tz } as typeof best;
-        bestScore = score;
-        bestS = gain;
-      }
+      if (consider(c.x + -tg.z * off, c.z + tg.x * off, s, off, bend)) found = true;
     }
     if (!found) missed++;
   }

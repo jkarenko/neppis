@@ -26,7 +26,6 @@ const POWER = [0, 0.35, 0.5, 0.65, 0.82, 1.0];
 const AIM = [0, 0.12, 0.08, 0.05, 0.03, 0.015];
 const NERVE = [0, 0.6, 0.72, 0.85, 0.92, 0.98];
 const FORESIGHT = [0, 0, 0, 0.25, 0.5, 1];
-const AVOID = [0, 1, 1, 0.7, 0.4, 0];
 
 function driver(
   id: string,
@@ -63,8 +62,6 @@ function driver(
       lineBias: 0,
       foresight: FORESIGHT[aim],
       laneHold: 0.5,
-      // Anyone who goes for rivals on purpose does not steer round them either.
-      avoid: (traits.bully ?? 0) > 0 ? 0 : AVOID[nerve],
       ...traits,
     },
   };
@@ -118,10 +115,10 @@ export const ROSTER: Driver[] = [
     { skin: 3, hair: 'short', hairColor: '#1a1a1a', hat: 'hardhat', hatColor: '#ffd60a', eyes: 'open', mouth: 'flat', accent: '#9d4edd' }, { bully: 0.2, jumpCaution: 0.2 }),
   driver('bea-line', 'Bea Line', 'Quarter Mile', 'Nobody has seen her practise, and nobody has seen her lose a straight.',
     ['Best all-round pace', 'Aims at the line, not at you: can be bumped'], [4, 4, 3],
-    { skin: 0, hair: 'ponytail', hairColor: '#a0522d', eyes: 'shades', mouth: 'smirk', accent: '#06d6a0' }, { aggression: 1.0, jumpCaution: 0.8, laneHold: 0.8, avoid: 0.3 }),
+    { skin: 0, hair: 'ponytail', hairColor: '#a0522d', eyes: 'shades', mouth: 'smirk', accent: '#06d6a0' }, { aggression: 1.0, jumpCaution: 0.8, laneHold: 0.8 }),
   driver('bastion-vette', 'Bastion Vette', 'The Wall', 'He takes the inside line and keeps it, and you can try to have it if you like.',
     ['Hard to pass, rarely bumped', 'Gives up length on the outside of every bend'], [4, 4, 4],
-    { skin: 0, hair: 'short', hairColor: '#e9c46a', eyes: 'open', mouth: 'flat', square: true, accent: '#0b3d91' }, { lineBias: 0.9, laneHold: 1, avoid: 1 }),
+    { skin: 0, hair: 'short', hairColor: '#e9c46a', eyes: 'open', mouth: 'flat', square: true, accent: '#0b3d91' }, { lineBias: 0.9, laneHold: 1 }),
   driver('rufus-turner', 'Rufus Turner', 'Roof First', 'One flip is bad luck. Four in a row is a style.',
     ['Unpredictable, knocks cars over', 'Flips constantly, throws races'], [5, 3, 5],
     { skin: 1, hair: 'mohawk', hairColor: '#c1440e', eyes: 'wide', mouth: 'grin', prop: 'shiner', accent: '#e63946' }, { aggression: 1.3, bully: 0.3, jumpCaution: 0, afterFlip: 1.1 }),
@@ -130,7 +127,7 @@ export const ROSTER: Driver[] = [
     { skin: 1, hair: 'curly', hairColor: '#1a1a1a', hat: 'headband', hatColor: '#ffd60a', stripe: '#2a9d8f', eyes: 'open', mouth: 'smile', accent: '#ffd60a' }, { aggression: 1.05, jumpCaution: 0 }),
   driver('harald-frost', 'Harald Frost', 'The Professor', 'He has already worked out where you will be in three turns, and he will not be there.',
     ['Never a wasted flick', 'Lacks a killer straight; can be out-dragged'], [4, 5, 3],
-    { skin: 0, hair: 'side', hairColor: '#c8c8c8', eyes: 'glasses', mouth: 'flat', accent: '#a2d2ff' }, { aggression: 0.92, tilt: 0.06, leadEase: 0.97, jumpCaution: 0.15, powerNoise: 0.01, avoid: 1 }),
+    { skin: 0, hair: 'side', hairColor: '#c8c8c8', eyes: 'glasses', mouth: 'flat', accent: '#a2d2ff' }, { aggression: 0.92, tilt: 0.06, leadEase: 0.97, jumpCaution: 0.15, powerNoise: 0.01 }),
   driver('the-dune', 'The Dune', 'The Record', 'He retired in 1991 and still holds the record. He does not abide.',
     ['Everything', 'Overconfident with a lead: eases off one notch too many'], [5, 5, 4],
     { skin: 0, hair: 'wavy', hairColor: '#b39655', eyes: 'side', mouth: 'flat', beard: 'goatee', robe: true, prop: 'cup', accent: '#8f7a58' }, { tilt: 0.05, leadEase: 0.95, jumpCaution: 0.2, powerNoise: 0.01 }),

@@ -24,7 +24,7 @@ browser. None ship with the game.
 | `probes/ridge-turn.ts` | A car straddling the ridge, nose turned by the aim preview, flicked: where it goes. `RIDGE=` overrides the ridge height. |
 | `probes/flip-settle.ts` | Drops the car on its roof, its side and its wheels at a few spots and reports how long `Car.settled()` takes and whether it creeps meanwhile. `flip-settle.ts [roof\|side\|wheels\|all]`, `TRACK=`, `SOLVER_ITERS=`, `ANG_DAMP=`, `CHASSIS_DENSITY=` to try a cause. |
 | `probes/lap-map.ts` | Top-down SVG of one six-car heat: track edges and every flick as a line, one colour per driver. `DRIVERS=`, `SEED=`, `OUT=`. |
-| `probes/bumps.ts` | Six-car heats: how often a flick moves a rival, overall and by the drivers who avoid contact; off-tracks, flips, flicks per lap. `HEATS=`. |
+| `probes/bumps.ts` | Six-car heats: flicks per lap in company, how often a flick moves a rival (overall and by the careful drivers), off-tracks, flips. `HEATS=`, `FORESIGHT=`, `LANEHOLD=`. The pace measure for any planner change. |
 | `probes/spot-variance.ts` | The same flick from many spots along a straight, to separate track geometry from the flick model. `TEXTURE=` scales the floor texture. |
 
 Run a probe with `./node_modules/.bin/tsx scripts/probes/<name>.ts`.

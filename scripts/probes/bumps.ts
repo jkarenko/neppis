@@ -1,5 +1,5 @@
-// Six-car heats on Hietsu: how often a flick moves a rival (a bump), by everyone and by the drivers who avoid
-// contact, plus off-tracks, flips and flicks per lap. `HEATS=` (default 6). For tuning `avoid` in the planner.
+// Six-car heats on Hietsu: flicks per lap in company, the pace measure for any planner change; how often a flick
+// moves a rival (a bump), by everyone and by the careful drivers; off-tracks and flips. `HEATS=` (default 6); `FORESIGHT=`, `LANEHOLD=` override every driver's knob. The careful drivers are those with nerve 3 or less and no bully knob.
 import * as THREE from 'three';
 import { initPhysics } from '../../src/physics.ts';
 import { Track } from '../../src/track.ts';
@@ -35,7 +35,9 @@ for (let h = 0; h < HEATS; h++) {
       }
     },
   }, 100 + h);
-  game.start(field.map((d) => ({ name: d.name, ai: true, profile: d.profile })));
+  const tweak = (k: string) => (process.env[k] !== undefined ? Number(process.env[k]) : undefined);
+  const knobs = { foresight: tweak('FORESIGHT'), laneHold: tweak('LANEHOLD') };
+  game.start(field.map((d) => ({ name: d.name, ai: true, profile: { ...d.profile, ...Object.fromEntries(Object.entries(knobs).filter(([, v]) => v !== undefined)) } })));
   let t = 0;
   while (!over && t < 3000) { world.step(); game.afterStep(PHYS_DT); t += PHYS_DT; }
   laps += game.players.reduce((a, p) => a + Math.max(p.lap, 0), 0);
