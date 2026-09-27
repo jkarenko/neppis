@@ -131,13 +131,21 @@ Design reading for step 6 (2026-09-27, before building):
   strip is the whole roster, never a subset, so picking a specific villain is always one scroll
   away. The compact card is a second size of the kit's driver card; the flavour line lives on
   the Opponents screen, not here, because the setup is for choosing, not browsing.
-- **Arcade tiers** sit above the strip as four chips: Rookie, Club, Pro, Legend. A tap draws the
-  opponents for that tier: three of them (a four-car race is the sweet spot between waiting for
-  AI turns and a crowd; with more humans it fills to six at most), all but one from the tier's
-  window of the ladder and one from the tier above, so there is always someone to beat. The
-  draw replaces the current picks and scrolls the strip to that window. The chip stays lit only
-  while the picks are the ones it drew; touching a card puts the chip out, which is the honest
-  state. Tapping a lit chip draws again.
+- **Tier tabs** sit above the strip as four text tabs on a baseline: Rookie, Club, Pro, Legend.
+  They are navigation and nothing else: a tap scrolls the strip to that window of the ladder,
+  and the underlined tab follows the scroll, so it always names the tier in view. They used to
+  be chips that drew a new grid on tap (2026-09-27), which the user called out: a control that
+  looks like a filter must not throw away the picks. A three-screen strip on a tablet still
+  needs a jump control, so the tabs stayed and only their meaning changed.
+- **Full-grid presets** sit beside the Opponents title, reading "Opponents: Easy, Medium, Hard",
+  which is what they are; the foot had no room for them on the iPad. A tap fills every
+  slot the humans leave (six cars minus the humans) with a draw from a window of the ladder,
+  Easy from the bottom ten, Medium from the middle ten, Hard from the top ten, in ladder order,
+  and scrolls the strip to the first pick. It replaces the picks without asking, because the
+  button says what it does and a pick is one tap to redo. The lit preset means the grid is
+  still the one it drew; touching a card puts it out. There is no separate shuffle: the presets
+  are the "don't make me pick" path, and the first open still starts with a three-driver Rookie
+  draw so a new player has a four-car race ready.
 - **The grid counter** "3 of 6 cars" sits by Start. When the grid is full the unpicked cards and
   Add player dim; the counter says why, so nothing is greyed without an explanation next to it.
 - **Start race** is the primary 56 px button under the counter, right column, so it never moves.
@@ -149,8 +157,9 @@ Design reading for step 6 (2026-09-27, before building):
   profile is, and a hand-drawn illustration can replace any of them later. Two faces are jokes
   the reader gets without a caption: Callow Rollover's portrait is upside down, The Dune's is a
   dune.
-- **Remembered:** humans (names and colours), picked opponents, laps and the tier that drew them.
-  The first time it opens: Player 1 and the Rookie draw.
+- **Remembered:** humans (names and colours), picked opponents, laps and the preset that drew
+  them. The first time it opens: Player 1 and the Rookie draw. Opening scrolls the strip to the
+  first pick, so what is picked is in view.
 - **Opponents screen** (from the menu) shows the same ladder as full cards in a four-tier grid,
   read-only: tap flips a card to its flavour line with the strength and weakness from the
   roster; "Race this one" on the back opens setup with the remembered humans and that one

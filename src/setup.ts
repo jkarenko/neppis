@@ -1,9 +1,9 @@
-// The setup screen: humans on the left, the ladder as a strip of driver cards on the right, arcade tiers above
-// it, laps and Start in the foot. Its state is remembered in localStorage. Design reading: docs/ui-plan.md,
-// section 2 "Setup".
+// The setup screen: humans on the left, the ladder as a strip of driver cards on the right with tier tabs above
+// it that scroll the strip, laps, the full-grid presets and Start in the foot. Its state is remembered in
+// localStorage. Design reading: docs/ui-plan.md, section 2 "Setup".
 import type { PlayerSetup } from './game.ts';
 import { PLAYER_COLORS } from './config.ts';
-import { DRIVER_BY_ID, ROSTER, TIERS, TIER_BY_ID, drawTier, type Driver } from './roster.ts';
+import { DRIVER_BY_ID, PRESETS, PRESET_BY_ID, ROSTER, TIERS, drawPreset, drawTier, tierOf, type Driver } from './roster.ts';
 import { icon } from './icons.ts';
 import { driverCard } from './kit.ts';
 
@@ -22,8 +22,8 @@ interface SetupState {
   /** Roster ids, kept in ladder order. */
   opponents: string[];
   laps: number;
-  /** The tier whose draw the opponents still are, or null once a card was touched. */
-  tier: string | null;
+  /** The preset whose draw the opponents still are, or null once a card was touched. */
+  preset: string | null;
 }
 
 const SETUP_KEY = 'neppis.setup.v2';
@@ -38,7 +38,7 @@ function loadState(): SetupState | null {
     if (!Array.isArray(v.humans) || v.humans.length === 0 || !Array.isArray(v.opponents)) return null;
     const humans = v.humans.slice(0, MAX_CARS).map((h, i) => ({ name: String(h.name ?? '').slice(0, 16) || `Player ${i + 1}`, color: PLAYER_COLORS.includes(Number(h.color)) ? Number(h.color) : PLAYER_COLORS[i] }));
     const opponents = ladderOrder(v.opponents.filter((id) => typeof id === 'string' && id in DRIVER_BY_ID)).slice(0, MAX_CARS - humans.length);
-    return { humans, opponents, laps: Math.max(1, Math.min(MAX_LAPS, Number(v.laps) || 1)), tier: typeof v.tier === 'string' && v.tier in TIER_BY_ID ? v.tier : null };
+    return { humans, opponents, laps: Math.max(1, Math.min(MAX_LAPS, Number(v.laps) || 1)), preset: typeof v.preset === 'string' && v.preset in PRESET_BY_ID ? v.preset : null };
   } catch {
     return null;
   }
@@ -54,7 +54,7 @@ function saveState(v: SetupState): void {
 
 function firstState(): SetupState {
   const rookie = TIERS[0];
-  return { humans: [{ name: 'Player 1', color: PLAYER_COLORS[0] }], opponents: drawTier(rookie, TIER_OPPONENTS).map((d) => d.id), laps: 1, tier: rookie.id };
+  return { humans: [{ name: 'Player 1', color: PLAYER_COLORS[0] }], opponents: drawTier(rookie, TIER_OPPONENTS).map((d) => d.id), laps: 1, preset: null };
 }
 
 export class SetupScreen {
@@ -62,6 +62,7 @@ export class SetupScreen {
   private readonly rows: HTMLElement;
   private readonly strip: HTMLElement;
   private readonly tiers: HTMLElement;
+  private readonly presets: HTMLElement;
   private readonly count: HTMLElement;
   private readonly lapsValue: HTMLElement;
   private readonly add: HTMLButtonElement;
@@ -75,6 +76,7 @@ export class SetupScreen {
     this.rows = q('playerRows');
     this.strip = q('driverStrip');
     this.tiers = q('tiers');
+    this.presets = q('presets');
     this.count = q('gridCount');
     this.lapsValue = q('lapsValue');
     this.add = q<HTMLButtonElement>('addPlayer');
@@ -92,8 +94,14 @@ export class SetupScreen {
       this.start();
     };
 
-    this.tiers.innerHTML = TIERS.map((t) => `<button type="button" class="chip tier" data-tier="${t.id}">${t.name}</button>`).join('');
-    for (const b of this.tiers.querySelectorAll<HTMLButtonElement>('.tier')) b.onclick = () => this.draw(b.dataset.tier!);
+    // The tier tabs only move the strip; the lit one follows the scroll.
+    this.tiers.innerHTML = TIERS.map((t) => `<button type="button" class="tab" role="tab" data-tier="${t.id}">${t.name}</button>`).join('');
+    for (const b of this.tiers.querySelectorAll<HTMLButtonElement>('.tab')) b.onclick = () => this.scrollTo(TIERS.find((t) => t.id === b.dataset.tier)!.from);
+    this.strip.addEventListener('scroll', () => this.lightTab(), { passive: true });
+    this.strip.addEventListener('scrollend', () => this.lightTab());
+
+    this.presets.innerHTML = PRESETS.map((p) => `<button type="button" class="btn btn-small preset" data-preset="${p.id}">${p.name}</button>`).join('');
+    for (const b of this.presets.querySelectorAll<HTMLButtonElement>('.preset')) b.onclick = () => this.fill(b.dataset.preset!);
 
     this.strip.innerHTML = ROSTER.map((d) => driverCard(d, PLAYER_COLORS[0], { compact: true, button: true })).join('');
     for (const b of this.strip.querySelectorAll<HTMLButtonElement>('.driver')) {
@@ -107,12 +115,14 @@ export class SetupScreen {
     this.state = loadState() ?? firstState();
     if (opponents) {
       this.state.opponents = ladderOrder(opponents).slice(0, MAX_CARS - this.state.humans.length);
-      this.state.tier = null;
+      this.state.preset = null;
     }
     this.rows.replaceChildren(...this.state.humans.map((_, i) => this.row(i)));
     this.sync();
     this.root.hidden = false;
-    if (this.state.tier) this.scrollTo(TIER_BY_ID[this.state.tier].from);
+    // Open on the first pick, so what is picked is in view.
+    const first = this.state.opponents[0];
+    this.scrollTo(first ? ROSTER.indexOf(DRIVER_BY_ID[first]) : 0, false);
   }
 
   close(): void {
@@ -179,22 +189,49 @@ export class SetupScreen {
     const on = this.state.opponents.includes(id);
     if (!on && this.cars() >= MAX_CARS) return;
     this.state.opponents = on ? this.state.opponents.filter((o) => o !== id) : ladderOrder([...this.state.opponents, id]);
-    this.state.tier = null;
+    this.state.preset = null;
     this.sync();
   }
 
-  private draw(tierId: string): void {
-    const tier = TIER_BY_ID[tierId];
-    const n = Math.max(1, Math.min(TIER_OPPONENTS, MAX_CARS - this.state.humans.length));
-    this.state.opponents = drawTier(tier, n).map((d) => d.id);
-    this.state.tier = tierId;
+  /** Fill every slot the humans leave with a draw from the preset's window of the ladder. */
+  private fill(presetId: string): void {
+    const preset = PRESET_BY_ID[presetId];
+    const n = Math.max(0, MAX_CARS - this.state.humans.length);
+    this.state.opponents = drawPreset(preset, n).map((d) => d.id);
+    this.state.preset = presetId;
     this.sync();
-    this.scrollTo(tier.from);
+    const first = this.state.opponents[0];
+    if (first) this.scrollTo(ROSTER.indexOf(DRIVER_BY_ID[first]));
   }
 
-  private scrollTo(ladderIndex: number): void {
+  /** A card's left edge in the strip's scroll coordinates. */
+  private cardLeft(card: HTMLElement): number {
+    return card.getBoundingClientRect().left - this.strip.getBoundingClientRect().left + this.strip.scrollLeft;
+  }
+
+  private scrollTo(ladderIndex: number, smooth = true): void {
     const card = this.cards.get(ROSTER[ladderIndex].id);
-    if (card) this.strip.scrollTo({ left: card.offsetLeft - this.strip.offsetLeft, behavior: 'smooth' });
+    if (card) this.strip.scrollTo({ left: this.cardLeft(card), behavior: smooth ? 'smooth' : 'instant' });
+    this.lightTab(ladderIndex);
+  }
+
+  /** Light the tab of the tier in view: the first card at or past the strip's left edge, or the given one. */
+  private lightTab(ladderIndex?: number): void {
+    let index = ladderIndex;
+    if (index === undefined) {
+      const left = this.strip.scrollLeft;
+      index = ROSTER.findIndex((d) => {
+        const card = this.cards.get(d.id)!;
+        return this.cardLeft(card) + card.offsetWidth / 2 >= left;
+      });
+      if (index < 0) index = ROSTER.length - 1;
+    }
+    const tier = tierOf(ROSTER[index]);
+    for (const b of this.tiers.querySelectorAll<HTMLButtonElement>('.tab')) {
+      const on = b.dataset.tier === tier.id;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', String(on));
+    }
   }
 
   private setLaps(n: number): void {
@@ -202,7 +239,7 @@ export class SetupScreen {
     this.lapsValue.textContent = String(this.state.laps);
   }
 
-  /** Bring every control in line with the state: swatches, card picks and colours, tier chip, counter, dimming. */
+  /** Bring every control in line with the state: swatches, card picks and colours, preset button, counter, dimming. */
   private sync(): void {
     const humans = this.state.humans;
     Array.from(this.rows.children).forEach((row, i) => {
@@ -218,7 +255,7 @@ export class SetupScreen {
       card.disabled = full && !picked;
       if (picked) card.style.setProperty('--c', hex(colors.get(id)!));
     }
-    for (const b of this.tiers.querySelectorAll<HTMLButtonElement>('.tier')) b.classList.toggle('is-on', b.dataset.tier === this.state.tier);
+    for (const b of this.presets.querySelectorAll<HTMLButtonElement>('.preset')) b.classList.toggle('is-on', b.dataset.preset === this.state.preset);
     this.add.disabled = full;
     this.count.textContent = `${this.cars()} of ${MAX_CARS} cars`;
     this.setLaps(this.state.laps);

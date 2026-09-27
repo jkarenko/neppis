@@ -279,11 +279,18 @@ html.reduce-motion #finger .touch { opacity: 0.6; }
 .setup-opponents { grid-area: opponents; min-width: 0; }
 .setup-oppo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .setup-oppo-head h3 { margin: 0; }
-.tiers { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip.tier { border: 1px solid var(--line); background: var(--surface-raised); font: inherit; font-size: var(--fs-body); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); -webkit-tap-highlight-color: transparent; }
-.chip.tier:active { background: color-mix(in srgb, var(--surface-raised), white 6%); }
-.chip.tier.is-on { background: var(--text); color: #1d2430; border-color: transparent; font-weight: 600; }
-.chip.tier:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+/* Tier tabs: text on a baseline, the one in view underlined. They move the strip and nothing else. */
+.tabs { display: flex; gap: 4px; }
+.tab { min-height: 36px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: var(--fs-body); cursor: pointer; transition: color var(--t-fast), border-color var(--t-fast); -webkit-tap-highlight-color: transparent; }
+.tab:hover { color: var(--text); }
+.tab.is-on { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 6px; }
+/* Full-grid presets beside the Opponents title: one tap fills every free slot. The lit one drew the current grid. */
+.presets-group { display: flex; align-items: center; gap: 14px; }
+.presets { display: flex; gap: 6px; }
+.setup-foot #gridCount { white-space: nowrap; }
+.btn.btn-small { min-height: 36px; padding: 0 14px; font-size: var(--fs-body); }
+.btn.preset.is-on { background: var(--text); color: #1d2430; border-color: transparent; font-weight: 600; }
 .setup-foot { grid-area: foot; display: flex; align-items: center; gap: 16px; margin-top: 4px; }
 .setup-foot #gridCount { margin-left: auto; font-size: var(--fs-label); }
 .setup-foot .btn-primary { min-width: 180px; }

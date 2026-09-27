@@ -151,6 +151,27 @@ export const TIERS: Tier[] = [
 ];
 export const TIER_BY_ID: Record<string, Tier> = Object.fromEntries(TIERS.map((t) => [t.id, t]));
 
+/** Full-grid presets: a window of the ladder the whole AI grid is drawn from. */
+export interface Preset {
+  id: string;
+  name: string;
+  /** Ladder indexes [from, to). */
+  from: number;
+  to: number;
+}
+export const PRESETS: Preset[] = [
+  { id: 'easy', name: 'Easy', from: 0, to: 10 },
+  { id: 'medium', name: 'Medium', from: 5, to: 15 },
+  { id: 'hard', name: 'Hard', from: 11, to: 21 },
+];
+export const PRESET_BY_ID: Record<string, Preset> = Object.fromEntries(PRESETS.map((p) => [p.id, p]));
+
+/** `count` drivers drawn from a preset's window of the ladder, in ladder order. */
+export function drawPreset(preset: Preset, count: number, random: () => number = Math.random): Driver[] {
+  const picks = sample(ROSTER.slice(preset.from, preset.to), count, random);
+  return picks.sort((a, b) => ROSTER.indexOf(a) - ROSTER.indexOf(b));
+}
+
 export function tierOf(d: Driver): Tier {
   const i = ROSTER.indexOf(d);
   return TIERS.find((t) => i >= t.from && i < t.to) ?? TIERS[TIERS.length - 1];
