@@ -79,13 +79,15 @@ facing backwards could simply be aimed forwards again.
 - **The sharper the turn, the gentler the flick** (user's design, 2026-09-27 evening): a car
   cannot take a sharp turn at speed, so the most power a flick may have falls with the turn
   angle. Full power inside a narrow centre band, then a sigmoid drop, down to a mild flick at
-  the edge of the wedge: `FLICK.turnPower` in `src/config.ts` (half the range gone at 22°,
-  width 5°, 0.35 at the edge), `maxPowerForTurn` in `src/ai.ts`. Measured at 0°, 8°, 16°, 22°,
-  30° and 45°: 1.00, 0.97, 0.85, 0.68, 0.46, 0.35. The drag is capped at that power, so the
+  the edge of the wedge: `FLICK.turnPower` in `src/config.ts` (half the range gone at 15°,
+  width 4°, 0.35 at the edge; tightened from 22° in review), `maxPowerForTurn` in `src/ai.ts`.
+  Measured at 0°, 8°, 12°, 15°, 22°, 30° and 45°: 1.00, 0.92, 0.80, 0.68, 0.45, 0.36, 0.35. The drag is capped at that power, so the
   ribbon and the triangle show the colour the flick will actually get (a hard drag at a sharp
   angle reads green or blue, never red); the wedge on the ground is filled with the same colour
   scale, red straight ahead through yellow and green to blue at the edges, so it tells the
-  player before they drag what each angle can give. The AI plans under the same cap. The ladder
+  player before they drag what each angle can give. The wedge is a mesh of rings and slices
+  whose vertices are lifted to the track height, so it rides over the ridge and the jump
+  instead of vanishing under them, and each vertex carries its own angle's colour. The AI plans under the same cap. The ladder
   baseline in `drivers.md` predates this rule.
 - **Penalty placements** keep their heading rules: back to the flick start means the heading
   the flick was aimed at, back to the last on-track point means the direction of travel at that
