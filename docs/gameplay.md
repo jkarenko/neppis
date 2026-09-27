@@ -131,10 +131,15 @@ facing backwards could simply be aimed forwards again.
   a car facing backwards turns 42° on its first flick and needs three flicks to face forwards;
   an 80° aim on the ridge is taken at 45°, and a 0.7 flick from the ridge crest at that angle
   flipped the car with the four-iteration solver (it stays on its wheels with twelve, section 2).
-- **A hole this exposes.** Off track is judged only where the car stops. The reversed car's
-  second flick cut across the infield from the start straight to the back straight and was
-  scored clean, with its lap count going backwards. The rule should also catch a flight that
-  left the track and came back on, placing the car at the last on-track point. Not fixed yet.
+- **A hole this exposed, closed.** Off track used to be judged only where the car stopped. The
+  reversed car's second flick cut across the infield from the start straight to the back straight
+  and was scored clean, with the lap counter crediting the cut. Two things were wrong. The first
+  flick's off-track placement had put the car on the ridge crest, just outside the edge, so its
+  next flick started off track and was free. And a flight that left the track and came back on
+  was never judged. Now leaving the track is judged along the whole flight (section 4), the point
+  the car goes back to is pulled onto the floor inside the ridge, and the lap counter ignores the
+  car while it is off the track, where the nearest point of the loop flips across the infield.
+  Every placement restores the lap count as it stood at that point.
 - **The release keeps the aim.** A drag released as a flick must not be reported as an ended aim
   first: for one review round it was, the aim-ended handler cleared the preview, and every real
   flick launched along the car's old heading while the debug handle and the Node probes, which
@@ -158,11 +163,16 @@ alternatives in brackets exist in `Rules` but are not the default.
 |---|---|---|
 | Flip | On its roof: up-vector dot below -0.2 | Back to where the flick started (or where the turn started) |
 | Tip | On its side: up-vector dot below 0.6 | Halfway along the path the flick took, measured by distance |
-| Off track | At rest outside the track edge plus a 1.5 cm margin, and the flick did not start off track | Back to the last point on the path where the car was on the track and upright (or the flick start) |
+| Off track | Outside the track edge plus a margin of 0.15 at any point of the flight, in the air or on the ground, and the flick did not start off track | Back to the last point on the path before it left where the car was upright, pulled in from the ridge foot by the car's own reach so it sits still there (or the flick start) |
 | Clean | none of the above | Stays where it is |
 
 - A flick that starts off track is free to end off track; the car is expected to be working
-  its way back.
+  its way back. A car only starts off track when somebody else pushed it there, or when a tip
+  put it halfway along a path that crossed the infield.
+- The lap counter only reads the track position while the car is on the track: off it, the
+  nearest point of the loop is meaningless in the infield. The standings show the last on-track
+  position of a car sitting outside, and a car that rejoins more than half a lap ahead of where
+  it left has gone the wrong way round.
 - Placements set the car down on its wheels at the track surface with the heading described in
   section 3.
 - Each penalty costs the flick. The messages are the only feedback today; the UI plan gives

@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { Car } from './car.ts';
 import type { Track, TrackQuery } from './track.ts';
-import { PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
+import { CAR, PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
 import { Rng } from './rng.ts';
 import { clampTurn, maxPowerForTurn, planFlick, wrapAngle, type AiProfile, type Plan, type RaceContext } from './ai.ts';
 
@@ -65,10 +65,14 @@ export interface GameEvents {
   raceOver(placings: Player[]): void;
 }
 
+/** A place a car can be put back to, with the lap count as it stood there so a placement restores it too. */
 interface Pose {
   x: number;
   z: number;
   yaw: number;
+  lap: number;
+  /** The last on-track position the lap counter had seen there. */
+  t: number;
 }
 
 /** Turn-based rule engine sitting on top of the physics world. */
@@ -83,10 +87,12 @@ export class Game {
   lastOutcome: Outcome | null = null;
   readonly rng: Rng;
 
-  private flickStart: Pose = { x: 0, z: 0, yaw: 0 };
-  private turnStart: Pose = { x: 0, z: 0, yaw: 0 };
+  private flickStart: Pose = { x: 0, z: 0, yaw: 0, lap: 0, t: 0 };
+  private turnStart: Pose = { x: 0, z: 0, yaw: 0, lap: 0, t: 0 };
   private lastOnTrack: Pose | null = null;
   private startedOffTrack = false;
+  /** The current flick has been off the track at some point, on the ground or in the air. */
+  private leftTrack = false;
   private path: Pose[] = [];
   private pathLen = 0;
   private flightTime = 0;
@@ -196,9 +202,9 @@ export class Game {
     if (p.car.upDot < 0.7) {
       // Knocked over by somebody else: right it where it lies.
       const pos = p.car.position;
-      this.place(p, { x: pos.x, z: pos.z, yaw: p.car.yaw });
+      this.place(p, { x: pos.x, z: pos.z, yaw: p.car.yaw, lap: p.lap, t: p.prevT });
     }
-    this.turnStart = this.poseOf(p.car);
+    this.turnStart = this.poseOf(p);
     this.restYaw = p.car.yaw;
     this.phase = 'aim';
     this.events.turnStart(p);
@@ -206,9 +212,9 @@ export class Game {
     if (p.ai) this.scheduleAi(0.9);
   }
 
-  private poseOf(car: Car): Pose {
-    const pos = car.position;
-    return { x: pos.x, z: pos.z, yaw: car.yaw };
+  private poseOf(p: Player): Pose {
+    const pos = p.car.position;
+    return { x: pos.x, z: pos.z, yaw: p.car.yaw, lap: p.lap, t: p.prevT };
   }
 
   /**
@@ -243,9 +249,10 @@ export class Game {
     car.commitPreview();
     // A sharp turn cannot be taken at speed: the power is capped by how far the nose was turned for this flick.
     power = Math.min(power, this.maxPowerNow(car.yaw));
-    this.flickStart = this.poseOf(car);
+    this.flickStart = this.poseOf(this.current);
     const q = this.track.query(this.flickStart.x, this.flickStart.z);
     this.startedOffTrack = !q.onTrack;
+    this.leftTrack = false;
     this.lastOnTrack = this.startedOffTrack ? null : { ...this.flickStart };
     this.path = [{ ...this.flickStart }];
     this.pathLen = 0;
@@ -276,10 +283,15 @@ export class Game {
       const last = this.path[this.path.length - 1];
       const d = Math.hypot(pos.x - last.x, pos.z - last.z);
       if (d > 0.05) {
-        this.path.push({ x: pos.x, z: pos.z, yaw: Math.atan2(-(pos.z - last.z), pos.x - last.x) });
+        const yaw = Math.atan2(-(pos.z - last.z), pos.x - last.x);
+        this.path.push({ x: pos.x, z: pos.z, yaw, lap: this.current.lap, t: this.current.prevT });
         this.pathLen += d;
       }
-      if (q.onTrack && car.upDot > 0.7) this.lastOnTrack = { x: pos.x, z: pos.z, yaw: car.yaw };
+      // Leaving the track is judged along the whole flight, not just where the car stops, so a cut across the
+      // infield that lands back on the track is caught. The point it goes back to is the last one before it left
+      // with the car upright, pulled onto the floor inside the ridge so it sits still there.
+      if (!q.onTrack) this.leftTrack = true;
+      else if (!this.leftTrack && car.upDot > 0.7) this.lastOnTrack = this.floorPose(q, car.yaw, this.current);
       if (car.settled(dt) || this.flightTime > 12) this.resolve();
     } else if (this.phase === 'settle' && this.current) {
       this.settleTimer -= dt;
@@ -301,25 +313,27 @@ export class Game {
     }
   }
 
+  /**
+   * Laps are counted from the track position while the car is on the track; off it, t is unreliable (the nearest
+   * point of the loop flips across the infield), so it is neither counted nor remembered and the car rejoins
+   * relative to where it left.
+   */
   private trackLap(p: Player, q: TrackQuery): void {
+    if (!q.onTrack) return;
     const dT = q.t - p.prevT;
-    if (q.onTrack) {
-      if (dT < -0.5) p.lap++;
-      else if (dT > 0.5) p.lap--;
-    }
+    if (dT < -0.5) p.lap++;
+    else if (dT > 0.5) p.lap--;
     p.prevT = q.t;
   }
 
   private resolve(): void {
     const p = this.current!;
     const car = p.car;
-    const pos = car.position;
-    const q = this.track.query(pos.x, pos.z);
     const up = car.upDot;
     let outcome: Outcome = 'ok';
     if (up < -0.2) outcome = 'kelli';
     else if (up < 0.6) outcome = 'puolikelli';
-    else if (!q.onTrack && !this.startedOffTrack) outcome = 'offtrack';
+    else if (this.leftTrack && !this.startedOffTrack) outcome = 'offtrack';
 
     switch (outcome) {
       case 'kelli':
@@ -345,8 +359,8 @@ export class Game {
     for (const pl of this.players) {
       const pp = pl.car.position;
       const pq = this.track.query(pp.x, pp.z);
-      pl.t = pq.t;
-      pl.progress = pl.lap + pq.t;
+      pl.t = pq.onTrack ? pq.t : pl.prevT;
+      pl.progress = pl.lap + pl.t;
     }
     for (const pl of this.players) {
       if (!pl.finished && pl.lap >= this.rules.laps) {
@@ -362,6 +376,21 @@ export class Game {
     this.events.changed();
   }
 
+  /**
+   * Where a car at this track position would rest with the whole of it on the floor: its lateral offset is pulled
+   * in from the ridge foot by how far the car reaches sideways with its nose at this yaw, plus a little. A car put
+   * down with a wheel on the ridge ramp rolls off the crest and rests off the track.
+   */
+  private floorPose(q: TrackQuery, yaw: number, p: Player): Pose {
+    const tg = this.track.tangentAt(q.index);
+    const rel = yaw - Math.atan2(-tg.z, tg.x);
+    const reach = (Math.abs(Math.sin(rel)) * CAR.length + Math.abs(Math.cos(rel)) * CAR.width) / 2 + 0.06;
+    const limit = Math.max(0, this.track.halfWidth - reach);
+    const d = Math.max(-limit, Math.min(limit, q.d));
+    const c = this.track.pointAt(q.index);
+    return { x: c.x - tg.z * d, z: c.z + tg.x * d, yaw, lap: p.lap, t: p.prevT };
+  }
+
   private midpointPose(): Pose {
     const half = this.pathLen / 2;
     let acc = 0;
@@ -371,7 +400,8 @@ export class Game {
       const d = Math.hypot(b.x - a.x, b.z - a.z);
       if (acc + d >= half) {
         const k = d > 0 ? (half - acc) / d : 0;
-        return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: b.yaw };
+        const at = k < 0.5 ? a : b;
+        return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: b.yaw, lap: at.lap, t: at.t };
       }
       acc += d;
     }
@@ -380,7 +410,8 @@ export class Game {
 
   private place(p: Player, pose: Pose): void {
     p.car.setPose(pose.x, pose.z, pose.yaw, this.heightAt);
-    this.trackLap(p, this.track.query(pose.x, pose.z));
+    p.lap = pose.lap;
+    p.prevT = pose.t;
   }
 
   private nextTurn(): void {
