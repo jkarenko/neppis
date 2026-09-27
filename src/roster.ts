@@ -128,7 +128,7 @@ export const ROSTER: Driver[] = [
   driver('harald-frost', 'Harald Frost', 'The Professor', 'He has already worked out where you will be in three turns, and he will not be there.',
     ['Never a wasted flick', 'Lacks a killer straight; can be out-dragged'], [4, 5, 3],
     { skin: 0, hair: 'side', hairColor: '#c8c8c8', eyes: 'glasses', mouth: 'flat', accent: '#a2d2ff' }, { aggression: 0.92, tilt: 0.06, leadEase: 0.97, jumpCaution: 0.15, powerNoise: 0.01 }),
-  driver('the-dune', 'The Dune', 'The Record', 'He retired in 1991 and still holds the record. He does not abide.',
+  driver('the-dune', 'The Dune', 'The Champ', 'He retired in 1991 and still holds the record. He does not abide.',
     ['Everything', 'Overconfident with a lead: eases off one notch too many'], [5, 5, 4],
     { skin: 0, hair: 'wavy', hairColor: '#b39655', eyes: 'side', mouth: 'flat', beard: 'goatee', robe: true, prop: 'cup', accent: '#8f7a58' }, { tilt: 0.05, leadEase: 0.95, jumpCaution: 0.2, powerNoise: 0.01 }),
 ];

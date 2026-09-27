@@ -45,7 +45,7 @@ the ladder (see "Arcade race" under Setup), so the full list is never on one gri
 | 18 | Rufus Turner | Roof First | (archetype) | Roof-us, turns over | Demolition derby stock | One flip is bad luck. Four in a row is a style. | 5 | 3 | 5 | Pedal to the metal, targets you when you are in reach | Unpredictable, knocks cars over | Flips constantly, throws races |
 | 19 | Airtime Sender | Full Send | Ayrton Senna | Sends it: full commit every flick, airtime on the jump | The natural | He has never once braked for the jump, because that is what the jump is for. | 5 | 4 | 5 | Near max power with good aim, full commit on the jump | Fastest laps when they land | Flips on the jump; no plan B |
 | 20 | Harald Frost | The Professor | Alain Prost | Frost: cold, calculated, never a wasted flick | The thinker | He has already worked out where you will be in three turns, and he will not be there. | 4 | 5 | 3 | Precise, patient, adapts to position, never over the safe line | Never a wasted flick | Lacks a killer straight; can be out-dragged |
-| 21 | The Dune | The Record | The Dude, The Big Lebowski | Nothing moves it; unbeaten | Made of sand, older than the beach | He retired in 1991 and still holds the record. He does not abide. | 5 | 5 | 4 | Near perfect, adapts: cautious when leading, pushes when behind | Everything | Overconfident with a lead: eases off one notch too many |
+| 21 | The Dune | The Champ | The Dude, The Big Lebowski | Nothing moves it; unbeaten | Made of sand, older than the beach | He retired in 1991 and still holds the record. He does not abide. | 5 | 5 | 4 | Near perfect, adapts: cautious when leading, pushes when behind | Everything | Overconfident with a lead: eases off one notch too many |
 
 The knobs behind "Plays like":
 
