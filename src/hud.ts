@@ -1,6 +1,7 @@
 import type { Game, Player, PlayerSetup } from './game.ts';
 import { PLAYER_COLORS } from './config.ts';
 import { DEFAULT_GRID, DRIVER_BY_ID, driverByName } from './roster.ts';
+import { icon } from './icons.ts';
 
 // Interim: until the setup screen from docs/ui-plan.md exists, AI rows get roster drivers by name, and a typed
 // name that matches a driver takes that driver's profile.
@@ -61,9 +62,9 @@ export class Hud {
     row.className = 'prow';
     row.innerHTML = `
       <span class="swatch" style="background:${hex(PLAYER_COLORS[i % PLAYER_COLORS.length])}"></span>
-      <input type="text" value="${name}" maxlength="14" />
-      <select><option value="human"${ai ? '' : ' selected'}>Human</option><option value="ai"${ai ? ' selected' : ''}>AI</option></select>
-      <button type="button" title="Remove">×</button>`;
+      <input type="text" class="field" value="${name}" maxlength="16" />
+      <select class="field"><option value="human"${ai ? '' : ' selected'}>Human</option><option value="ai"${ai ? ' selected' : ''}>AI</option></select>
+      <button type="button" class="btn btn-icon" aria-label="Remove">${icon('close')}</button>`;
     (row.querySelector('button') as HTMLButtonElement).onclick = () => {
       row.remove();
       this.recolorRows();
@@ -132,10 +133,10 @@ export class Hud {
   }
 
   showResults(placings: Player[], onAgain: () => void): void {
-    this.results.innerHTML = `<div>
+    this.results.innerHTML = `<div class="card">
       <h2>${placings[0].name} wins!</h2>
       <ol>${placings.map((p) => `<li><span style="color:${hex(p.color)}">●</span> ${p.name}</li>`).join('')}</ol>
-      <button type="button">Race again</button>
+      <button type="button" class="btn btn-primary btn-block">Race again</button>
     </div>`;
     (this.results.querySelector('button') as HTMLButtonElement).onclick = () => {
       this.results.hidden = true;

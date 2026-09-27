@@ -7,6 +7,7 @@
 //   sheet of all of them is written as "-sheet". The game is loaded once per distinct scale and the viewport
 //   resized in place, so a full set takes about a minute.
 //   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
+//   FULL=1 captures the whole scrollable page, for the kit (?kit).
 import { readFile } from 'node:fs/promises';
 import type { Page } from 'playwright';
 import { PRESETS, launchBrowser, openPage, parseViewport, type Viewport } from './lib/browser.ts';
@@ -81,7 +82,7 @@ for (const [scale, group] of byScale) {
       await page.waitForTimeout(300);
     }
     const out = outPath(vp.label);
-    await page.screenshot({ path: out });
+    await page.screenshot({ path: out, fullPage: Boolean(process.env.FULL) });
     shots.push({ label: `${vp.label} · ${vp.width}×${vp.height}@${vp.scale}`, path: out });
     if (dragPx > 0) await page.mouse.up();
     console.log('saved', out, `${vp.width}x${vp.height}@${vp.scale}`);

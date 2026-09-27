@@ -172,10 +172,13 @@ there is no desktop.
    through it.
 0b. Turn wedge and mesh-only aim preview (done 2026-09-27), see `gameplay.md` section 3. The
    wedge drawn on the ground is still to do, in step 7.
-Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12.
+Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31.
 
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
-   baseline.
+   baseline. Done 2026-09-27: tokens in `src/style.css`, components (.btn, .chip, .toast, .row,
+   .field, .stepper, .switch, .card, .driver), icons in `src/icons.ts`, the kit in `src/kit.ts`
+   at `?kit`, captured with `FULL=1 pnpm screenshot out.png 'http://localhost:5175/?kit'`. The
+   interim setup and results overlays already wear the family.
 2. Boot/title screen with progress and the audio gate.
 3. `src/app.ts` state machine, menu, pause, results. Old setup form removed.
 4. Roster data, portraits, opponent cards; setup screen on top of them.

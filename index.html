@@ -26,21 +26,22 @@
           <path d="M14 26 V8 a4 4 0 0 1 8 0 v14 l2-1 a3.5 3.5 0 0 1 5 2 l1.5-0.5 a3.5 3.5 0 0 1 5 2.5 l1.5-0.3 a3 3 0 0 1 3.5 3 v9 c0 6-4 11-11 11 h-5 c-4 0-7-2-9-5 l-7-10 a3.5 3.5 0 0 1 5.5-4.5 z" fill="#fff" stroke="#1d2430" stroke-width="2.2" stroke-linejoin="round"/>
         </svg>
       </div>
-      <button id="newRace" type="button">New race</button>
+      <button id="newRace" type="button" class="btn">New race</button>
     </div>
     <div id="setup">
-      <form id="setupForm">
+      <form id="setupForm" class="card">
         <h1>Neppis</h1>
         <p class="sub">Finnish flick-car racing. Three flicks per turn. Stay on the track, keep the rubber side down.</p>
         <div id="playerRows"></div>
-        <div class="row">
-          <button type="button" id="addPlayer">+ Add player</button>
-          <label>Laps <input type="number" id="laps" min="1" max="5" value="1" /></label>
+        <div class="row-actions">
+          <button type="button" id="addPlayer" class="btn">+ Add player</button>
+          <label class="strip">Laps <input type="number" id="laps" class="field" min="1" max="5" value="1" /></label>
         </div>
-        <button type="submit" id="start">Start race</button>
+        <button type="submit" id="start" class="btn btn-primary btn-block">Start race</button>
       </form>
     </div>
     <div id="results" hidden></div>
+    <div id="kit" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

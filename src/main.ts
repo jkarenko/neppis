@@ -4,7 +4,8 @@ import { initPhysics } from './physics.ts';
 import { Track, TRACKS } from './track.ts';
 import { TRACK_BY_NAME } from './tracks/index.ts';
 import { Game, type Player, type PlayerSetup } from './game.ts';
-import { scenarioFromUrl, type CameraMode, type GameState, type NeppisDebug } from './scenario.ts';
+import { scenarioFromUrl, PRESETS, type CameraMode, type GameState, type NeppisDebug, type Scenario } from './scenario.ts';
+import { renderKit } from './kit.ts';
 import { FlickIndicator } from './indicator.ts';
 import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
@@ -12,7 +13,11 @@ import { Hud } from './hud.ts';
 import { DEFAULT_RULES, MAX_STEPS_PER_FRAME, PHYS_DT } from './config.ts';
 
 async function main(): Promise<void> {
-  const scenario = scenarioFromUrl();
+  // The kit page (?kit) shows every component over a live scene: the straight scenario, HUD hidden.
+  const kit = new URLSearchParams(location.search).has('kit');
+  const scenario: Scenario | null = kit
+    ? { name: 'kit', track: 'test', players: PRESETS.straight.players!, seed: 1, cam: 'chase', laps: 1 }
+    : scenarioFromUrl();
   const world = await initPhysics();
 
   const app = document.getElementById('app')!;
@@ -188,6 +193,11 @@ async function main(): Promise<void> {
     hud.hideSetup();
     startRace(scenario.players, scenario.laps);
     (window as unknown as { __neppis: NeppisDebug }).__neppis = debugHandle();
+    if (kit) {
+      document.documentElement.classList.add('kit');
+      document.getElementById('hud')!.hidden = true;
+      renderKit(document.getElementById('kit')!);
+    }
   } else {
     hud.showSetup(startRace);
   }

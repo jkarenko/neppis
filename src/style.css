@@ -6,34 +6,147 @@
   font-display: swap;
   src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
 }
+
+/* ---- Tokens (docs/ui-plan.md section 4). One family: dark glass over the pale scene. ---- */
 :root {
-  color-scheme: light;
-  --panel: rgba(20, 24, 32, 0.78);
+  color-scheme: dark;
+  --surface: rgba(20, 24, 32, 0.78);
+  --surface-strong: rgba(20, 24, 32, 0.92);
+  --surface-raised: rgba(255, 255, 255, 0.06);
   --text: #f4f1ea;
-  --muted: #b9b4a8;
+  --muted: #cfc9bd;
+  --line: rgba(255, 255, 255, 0.14);
+  --danger: #ef4444;
+  --ok: #22c55e;
+  --power-0: #3b82f6;
+  --power-1: #22c55e;
+  --power-2: #eab308;
+  --power-3: #ef4444;
+  /* The current driver's colour; set per element. */
+  --c: #f4f1ea;
+  --fs-label: 12px;
+  --fs-body: 14px;
+  --fs-control: 16px;
+  --fs-title: 20px;
+  --fs-display: 28px;
+  --r-pill: 999px;
+  --r-chip: 12px;
+  --r-card: 16px;
+  --h-touch: 44px;
+  --h-primary: 56px;
+  --t-fast: 150ms;
+  --t-base: 250ms;
+  --t-glide: 700ms;
+  --inset-top: max(12px, env(safe-area-inset-top));
+  --inset-right: max(14px, env(safe-area-inset-right));
+  --inset-bottom: max(12px, env(safe-area-inset-bottom));
+  --inset-left: max(12px, env(safe-area-inset-left));
+  --blur: blur(8px);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
 }
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t-base: 0ms; }
+}
+
 /* Keep the start screen hidden until Inter has loaded (index.html), so no text is ever painted in a fallback font. */
 html:not(.fonts-ready) #setup { visibility: hidden; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
-#app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+#app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+/* ---- Components ---- */
+.glass { background: var(--surface); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.glass-strong { background: var(--surface-strong); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.card { background: var(--surface-strong); color: var(--text); border-radius: var(--r-card); padding: 20px 22px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
+.card h1, .card h2 { margin: 0 0 6px; font-weight: 700; letter-spacing: -0.01em; }
+.card h1 { font-size: var(--fs-display); }
+.card h2 { font-size: var(--fs-title); }
+.card .sub { margin: 0 0 16px; color: var(--muted); }
+.icon { width: 24px; height: 24px; display: block; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icon path { vector-effect: non-scaling-stroke; }
+
+/* Buttons: never under 44 px, primary 56. Pressed = a shade lighter plus a small scale, no hover-only state. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--h-touch); min-width: var(--h-touch); padding: 0 18px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-control); font-weight: 500; cursor: pointer; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); transition: transform var(--t-fast), background var(--t-fast); pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.btn:active, .btn.is-pressed { background: color-mix(in srgb, var(--surface), white 6%); transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.btn[disabled], .btn.is-disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+.btn-primary { min-height: var(--h-primary); padding: 0 26px; background: var(--text); color: #1d2430; border-color: transparent; font-weight: 600; }
+.btn-primary:active, .btn-primary.is-pressed { background: #ffffff; }
+.btn-icon { padding: 0; width: var(--h-touch); }
+.btn-block { display: flex; width: 100%; }
+.btn-danger { color: var(--danger); }
+.btn-menu { min-height: var(--h-primary); justify-content: flex-start; padding: 0 22px; border-radius: var(--r-card); font-size: 18px; }
+
+/* Chips: small pills of status. */
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: var(--surface); color: var(--text); font-size: var(--fs-body); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.chip .muted, .muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Rows in a list: a player, a setting. */
+.row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; min-height: var(--h-touch); padding: 4px 8px; border-radius: var(--r-chip); }
+.row.is-current { background: color-mix(in srgb, var(--c) 30%, transparent); box-shadow: inset 3px 0 0 var(--c); }
+.row .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); background: var(--c); }
+.row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-label); }
+.list { display: flex; flex-direction: column; gap: 2px; }
+
+/* Form controls: text, select, stepper, switch. All 44 tall. */
+.field { display: flex; align-items: center; min-height: var(--h-touch); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-chip); background: var(--surface-raised); color: var(--text); font: inherit; font-size: var(--fs-control); width: 100%; }
+.field:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f4f1ea' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-raised); }
+.stepper .btn { border: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.stepper .value { min-width: 36px; text-align: center; font-size: var(--fs-control); font-variant-numeric: tabular-nums; }
+.switch { position: relative; width: 52px; height: 32px; flex: none; border-radius: var(--r-pill); background: var(--line); border: 0; cursor: pointer; transition: background var(--t-base); padding: 0; }
+.switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--text); transition: transform var(--t-base); }
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* Toast: one slot under the turn chip; icon + text. */
+.toast { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 16px 6px 12px; border-radius: var(--r-pill); background: var(--surface-strong); color: var(--text); font-size: 15px; max-width: 80vw; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.toast.is-warn .icon { color: var(--power-2); }
+.toast.is-bad .icon { color: var(--danger); }
+.toast.is-good .icon { color: var(--ok); }
+
+/* Stat bars on an opponent card: 1..5 blocks. */
+.stat-bar { display: grid; grid-template-columns: 56px repeat(5, 1fr); gap: 4px; align-items: center; font-size: var(--fs-label); color: var(--muted); }
+.stat-bar i { height: 6px; border-radius: 3px; background: var(--line); }
+.stat-bar i.on { background: var(--c); }
+
+/* Opponent card: front (name, epithet, stats), back (flavour and traits). */
+.driver { position: relative; width: 200px; min-height: 230px; border-radius: var(--r-card); background: var(--surface-strong); color: var(--text); padding: 14px; display: flex; flex-direction: column; gap: 10px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 2px solid transparent; }
+.driver.is-picked { border-color: var(--c); }
+.driver .portrait { width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--c) 40%, #1d2430); display: grid; place-items: center; font-weight: 700; font-size: 22px; color: var(--text); }
+.driver .who { display: flex; align-items: center; gap: 12px; }
+.driver .name { font-weight: 600; font-size: var(--fs-control); line-height: 1.15; }
+.driver .epithet { color: var(--muted); font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.06em; }
+.driver .flavour { color: var(--text); font-size: var(--fs-body); font-style: italic; }
+.driver .pick { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #1d2430; display: none; place-items: center; }
+.driver.is-picked .pick { display: grid; }
+.driver .pick .icon { width: 18px; height: 18px; }
+
+/* ---- HUD ---- */
 #hud { position: fixed; inset: 0; pointer-events: none; color: var(--text); }
-#players { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); background: var(--panel); border-radius: 12px; padding: 10px 12px; min-width: 190px; backdrop-filter: blur(6px); }
-.player { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; font-size: 14px; }
+#players:empty { display: none; }
+#players { position: absolute; top: var(--inset-top); left: var(--inset-left); border-radius: var(--r-chip); padding: 8px; min-width: 190px; background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.player { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; font-size: var(--fs-body); }
 .player.current { background: color-mix(in srgb, var(--c) 30%, transparent); box-shadow: inset 3px 0 0 var(--c); }
 .player .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.7); }
 .player .name { white-space: nowrap; }
-.player .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.player .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-label); }
 /* Flicks left for the current player: chevrons in the car's colour, echoing the flick ribbon. */
-#turn { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 7px 12px; border-radius: 999px; background: var(--panel); backdrop-filter: blur(6px); }
+#turn { position: absolute; top: var(--inset-top); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 #turn[hidden] { display: none; }
 #turn svg { width: 18px; height: 18px; display: block; }
 #turn svg path { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 #turn svg.used path { stroke: color-mix(in srgb, var(--c) 35%, transparent); }
-#message { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 44px); left: 50%; transform: translateX(-50%); background: var(--panel); padding: 8px 16px; border-radius: 999px; font-size: 15px; opacity: 0; transition: opacity 0.25s; max-width: 80vw; text-align: center; }
+#message { position: absolute; top: calc(var(--inset-top) + 46px); left: 50%; transform: translateX(-50%); background: var(--surface-strong); padding: 8px 16px; border-radius: var(--r-pill); font-size: 15px; opacity: 0; transition: opacity var(--t-base); max-width: 80vw; text-align: center; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 #message.show { opacity: 1; }
-#power { position: absolute; right: max(14px, env(safe-area-inset-right)); top: max(14px, env(safe-area-inset-top)); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); background: var(--panel); padding: 6px 10px; border-radius: 999px; }
+#power { position: absolute; right: var(--inset-right); top: var(--inset-top); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); background: var(--surface); padding: 8px 12px; border-radius: var(--r-pill); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 /* First-turn cue: a finger drags down from the car, leaving a swipe trail that fades behind it. The container sits
    at the car's screen position (set each frame); children are placed relative to it. One 1.6 s cycle: appear at the
    car, drag down, fade out in place, restart. */
@@ -63,27 +176,43 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
   70% { transform: scale(1); opacity: 0.35; }
   82%, 100% { opacity: 0; }
 }
-#newRace { pointer-events: auto; position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); background: var(--panel); color: var(--text); border: 0; border-radius: 999px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
-#setup, #results { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15, 20, 30, 0.55); backdrop-filter: blur(4px); z-index: 10; }
+@media (prefers-reduced-motion: reduce) {
+  #finger .hand, #finger .trail, #finger .touch { animation: none; }
+  #finger .hand { transform: translateY(calc(var(--travel) / 2)); opacity: 1; }
+  #finger .trail { transform: scaleY(0.5); opacity: 1; }
+  #finger .touch { opacity: 0.6; }
+}
+#newRace { pointer-events: auto; position: absolute; right: var(--inset-right); bottom: var(--inset-bottom); }
+
+/* ---- Overlays (interim setup and results, replaced in step 5) ---- */
+#setup, #results { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15, 20, 30, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10; pointer-events: auto; }
 #setup[hidden], #results[hidden] { display: none; }
-#setupForm, #results > div { background: #fffdf7; color: #1d2430; border-radius: 16px; padding: 22px 26px; width: min(92vw, 420px); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-#setupForm h1 { margin: 0 0 4px; font-size: 28px; }
-#setupForm .sub { margin: 0 0 16px; color: #5c6570; font-size: 14px; }
-#setupForm .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 12px 0; }
+#setupForm, #results > div { width: min(92vw, 420px); }
+#setupForm .row-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 14px 0; }
 .prow { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; margin: 6px 0; }
 .prow .swatch { width: 14px; height: 14px; border-radius: 50%; }
-.prow input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid #cfd3d8; border-radius: 8px; font-size: 14px; }
-.prow select { padding: 6px 8px; border-radius: 8px; border: 1px solid #cfd3d8; font-size: 14px; }
-.prow button { background: none; border: 0; color: #9aa3ad; cursor: pointer; font-size: 16px; }
-#setupForm button, #results button { cursor: pointer; }
-#addPlayer { background: none; border: 1px dashed #b7bec6; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
-#laps { width: 56px; padding: 6px; border-radius: 8px; border: 1px solid #cfd3d8; }
-#start { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #1d2430; color: #fff; font-size: 16px; margin-top: 6px; }
-#results h2 { margin: 0 0 10px; }
+.prow select.field { width: auto; min-width: 104px; }
+#laps.field { width: 64px; text-align: center; }
 #results ol { padding-left: 22px; margin: 0 0 14px; }
-#results li { margin: 4px 0; }
-#results button { width: 100%; padding: 10px; border: 0; border-radius: 10px; background: #1d2430; color: #fff; font-size: 15px; }
+#results li { margin: 6px 0; }
+
+/* ---- Kit page (?kit): every component in every state, for the screenshot contact sheet. ---- */
+/* In kit mode the page itself scrolls, so a full-page screenshot captures all of it; the scene stays fixed behind. */
+html.kit, html.kit body { overflow: auto; height: auto; min-height: 100%; }
+#kit { position: relative; z-index: 20; padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); color: var(--text); pointer-events: auto; }
+#kit[hidden] { display: none; }
+#kit h2 { margin: 28px 0 10px; font-size: var(--fs-title); color: var(--text); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+#kit h2:first-child { margin-top: 0; }
+#kit .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+#kit .swatch { width: 84px; padding: 8px; border-radius: var(--r-chip); font-size: var(--fs-label); color: var(--text); text-shadow: 0 1px 2px rgba(0,0,0,0.6); border: 1px solid var(--line); }
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#kit .col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 360px); }
+#kit .cards { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+#kit .icons { display: flex; flex-wrap: wrap; gap: 6px; }
+#kit .icons .chip { padding: 0 10px; gap: 6px; font-size: var(--fs-label); }
+
 @media (max-width: 600px) {
-  #players { min-width: 150px; padding: 8px; }
+  #players { min-width: 150px; padding: 6px; }
   .player { font-size: 13px; }
+  .card { padding: 16px; }
 }
