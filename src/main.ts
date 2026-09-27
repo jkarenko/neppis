@@ -8,6 +8,7 @@ import { scenarioFromUrl, PRESETS, type CameraMode, type GameState, type NeppisD
 import { renderKit } from './kit.ts';
 import { boot } from './boot.ts';
 import { unlockAudio } from './audio.ts';
+import { App } from './app.ts';
 import { FlickIndicator } from './indicator.ts';
 import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
@@ -86,6 +87,11 @@ async function main(): Promise<void> {
   const timer = new THREE.Timer();
 
   let camAnim: { fromPos: THREE.Vector3; toPos: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; t: number } | null = null;
+  /** While a menu is up the camera drifts slowly around the track; a race takes it to the chase view. */
+  let orbiting = !scenario;
+  let paused = false;
+  let accumulator = 0;
+  const orbitRadius = Math.max(track.sizeX, track.sizeZ) * 0.7;
 
   function cameraPose(p: Player, mode: CameraMode): { pos: THREE.Vector3; target: THREE.Vector3 } {
     const pos = p.car.position;
@@ -98,6 +104,7 @@ async function main(): Promise<void> {
   }
 
   function frameCar(p: Player): void {
+    orbiting = false;
     const { pos, target } = cameraPose(p, scenario?.cam ?? 'chase');
     if (scenario) {
       // No glide in a scenario: the shot is ready as soon as the page is.
@@ -150,7 +157,7 @@ async function main(): Promise<void> {
       if (game.phase === 'aim' && !cue.visible) showCue();
     },
     raceOver: (placings) => {
-      hud.showResults(placings, () => hud.showSetup(startRace));
+      if (!scenario) ui.showResults(placings);
     },
   }, scenario?.seed);
 
@@ -188,12 +195,24 @@ async function main(): Promise<void> {
     },
   });
 
-  document.getElementById('newRace')!.addEventListener('click', () => {
+  function clearRace(): void {
     game.clear();
     indicator.hide();
     endCue();
     hud.render(game);
-    hud.showSetup(startRace);
+    orbiting = true;
+    camAnim = null;
+  }
+
+  const ui = new App({
+    openSetup: (onStart) => hud.showSetup(onStart),
+    hideSetup: () => hud.hideSetup(),
+    startRace,
+    setPaused: (p) => {
+      paused = p;
+      if (!p) accumulator = 0; // no burst of catch-up steps on resume
+    },
+    clearRace,
   });
 
   window.addEventListener('resize', () => {
@@ -217,7 +236,7 @@ async function main(): Promise<void> {
     // Loaded: "Tap to play". The tap is the browser's user gesture, so audio is unlocked right here.
     boot.ready(() => {
       unlockAudio();
-      hud.showSetup(startRace);
+      ui.go('menu');
     });
   }
 
@@ -328,17 +347,22 @@ async function main(): Promise<void> {
     };
   }
 
-  let accumulator = 0;
   renderer.setAnimationLoop(() => {
     timer.update();
     const frameDt = Math.min(timer.getDelta(), 0.1);
-    accumulator = Math.min(accumulator + frameDt, MAX_STEPS_PER_FRAME * PHYS_DT);
+    if (!paused) accumulator = Math.min(accumulator + frameDt, MAX_STEPS_PER_FRAME * PHYS_DT);
     const tPhys = performance.now();
     while (accumulator >= PHYS_DT) {
       stepPhysics();
       accumulator -= PHYS_DT;
     }
     for (const p of game.players) p.car.sync();
+    if (orbiting) {
+      // Menu backdrop: a slow drift around the track, no controls.
+      const a = timer.getElapsed() * 0.05;
+      camera.position.set(Math.cos(a) * orbitRadius, orbitRadius * 0.55, Math.sin(a) * orbitRadius);
+      controls.target.set(0, 0, 0);
+    }
     const tRender = performance.now();
     acc.physMs += tRender - tPhys;
 
@@ -354,7 +378,8 @@ async function main(): Promise<void> {
       controls.target.copy(pos);
       camera.position.add(delta);
     }
-    controls.update();
+    if (!orbiting) controls.update();
+    else camera.lookAt(controls.target);
 
     indicator.update(timer.getElapsed());
     if (cue.visible && game.current) {

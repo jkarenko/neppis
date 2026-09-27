@@ -193,6 +193,12 @@ aggression 0.85, aim noise 0.03 rad). The roster of distinct drivers is in `driv
 | `FLICK.maxTurnDeg` | 45 | turn allowed per flick, degrees either way |
 | `WHEEL.rollingCoefficient` | 0.12 | rolling resistance, fraction of g |
 
+## 8b. Pause
+
+The pause button (bottom right) or Escape freezes the world: no physics steps, no AI thinking,
+the scene stays as it was. Resume continues from the same frame without a burst of catch-up
+steps. Quitting to the menu clears the race.
+
 ## 9. Scenarios: testing a situation
 
 `?scenario=<name>` (or `?car=t,lateral,heading`) loads the game straight into a known situation: a track

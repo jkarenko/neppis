@@ -7,8 +7,8 @@
 //   sheet of all of them is written as "-sheet". The game is loaded once per distinct scale and the viewport
 //   resized in place, so a full set takes about a minute.
 //   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
-//   FULL=1 captures the whole scrollable page, for the kit (?kit). HOLD=1 shoots the title screen instead of tapping
-//   through it; with ?boot=hold in the url the loading state is shot.
+//   FULL=1 captures the whole scrollable page, for the kit (?kit). STOP=menu|setup stops at that screen instead of
+//   starting the race; HOLD=1 shoots the title screen; with ?boot=hold in the url the loading state is shot.
 import { readFile } from 'node:fs/promises';
 import type { Page } from 'playwright';
 import { PRESETS, launchBrowser, openPage, parseViewport, type Viewport } from './lib/browser.ts';
@@ -71,12 +71,17 @@ for (const [scale, group] of byScale) {
   await page.waitForTimeout(1500);
   // With HOLD=1 the title (or a held boot screen) is what gets shot. Otherwise tap through the title, and a scenario
   // URL starts the race by itself; anything else submits the setup form.
-  if (!process.env.HOLD) {
+  const stop = process.env.HOLD ? 'title' : (process.env.STOP ?? 'race');
+  if (stop !== 'title') {
     if (await page.isVisible('#boot.is-ready')) {
       await page.click('#boot');
       await page.waitForTimeout(400);
     }
-    if (await page.isVisible('#start')) await page.click('#start');
+    if (stop !== 'menu' && (await page.isVisible('#menuRace'))) {
+      await page.click('#menuRace');
+      await page.waitForTimeout(300);
+    }
+    if (stop !== 'menu' && stop !== 'setup' && (await page.isVisible('#start'))) await page.click('#start');
   }
   await page.waitForTimeout(Number(process.env.WAIT_MS ?? 2500));
 

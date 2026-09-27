@@ -77,9 +77,36 @@ Design reading (2026-09-27, before building):
   is showing.
 
 ### Menu
+
+Design reading for step 5 (2026-09-27, before building):
+
+- **The scene is the menu's backdrop, live.** The track stays mounted with a slow orbit camera
+  and no cars, so the menu already shows the place you will race. Every overlay is a glass card
+  over it; nothing is a separate page.
+- **No dead buttons.** The menu shows only what exists. In step 5 that is Race (primary) and
+  Settings (sound on/off, a stored preference the audio will honour). Opponents arrives with
+  step 6, How to play with step 7. A disabled or placeholder item teaches the player that
+  buttons here may not work, which is worse than a shorter menu.
+- **One column, 360 px, centred**, the mark small above a NEPPIS header so the title's lockup
+  carries through at a reduced size. Items are the 56 px menu buttons from the kit. Footer:
+  version only, muted.
+- **Back is always top-left, 44 px, and Escape does the same**, on setup and settings. The
+  race has no back; it has pause.
+- **Pause freezes the world.** The pause button sits bottom-right in the thumb zone and replaces
+  the old New race pill. While paused the physics does not step and the AI does not think; the
+  card sits over the frozen scene. Resume (primary), Settings, Quit to menu. Quit asks once,
+  inline in the same card ("Quit this race?" Keep racing / Quit), never a second modal.
+- **Results** is a card: winner in the heading, the placings with colour dots, then Race again
+  (same grid, primary), Change setup, Menu. The podium with portraits comes with step 6.
+- **Setup is remembered** in localStorage (names, human or AI, laps) and restored when the
+  form opens. Race again reuses the last grid without showing the form.
+- **Transitions** are 250 ms fades, 0 with reduced motion. The camera glides from the orbit to
+  the chase view when a race starts, and back when it ends.
+- **Testing.** Scenario and kit URLs go straight to the race as before. The screenshot script
+  taps through title and menu. Each screen can be captured by driving the real buttons.
+
 - Four large items, stacked, 56 px tall, full width on phones, 360 px wide column on tablets and
-  desktop. Race is the primary (filled), the rest are glass.
-- Small footer: version, sound toggle icon.
+  desktop. Race is the primary (filled), the rest are glass. (Original brief; see the reading.)
 
 ### Setup
 Two sections, then a footer with laps and Start.
@@ -198,7 +225,7 @@ there is no desktop.
    through it.
 0b. Turn wedge and mesh-only aim preview (done 2026-09-27), see `gameplay.md` section 3. The
    wedge drawn on the ground is still to do, in step 7.
-Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31. First gallery review round (three issues: ridge turning, icons and HUD redundancy, setup form) 14:38 to 15:05; second pass on the same three (settled release, tip icon, Start in the side column) 15:08 to 15:25; third pass (release was clearing the aim on a real drag; setup card height) 15:30 to 15:52. Step 4 (boot and title) 16:05 to 16:30.
+Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31. First gallery review round (three issues: ridge turning, icons and HUD redundancy, setup form) 14:38 to 15:05; second pass on the same three (settled release, tip icon, Start in the side column) 15:08 to 15:25; third pass (release was clearing the aim on a real drag; setup card height) 15:30 to 15:52. Step 4 (boot and title) 16:05 to 16:30; title mark rounds (silhouette attempts, then the sketch) 16:35 to 17:20. Step 5 (app screens) 17:25 to 17:58.
 
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
    baseline. Done 2026-09-27: tokens in `src/style.css`, components (.btn, .chip, .toast, .row,
@@ -209,7 +236,11 @@ Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 1
    with a tiny inline state script, styles in the boot section of `style.css`, `src/boot.ts` and
    `src/audio.ts`. Captures: `HOLD=1 pnpm screenshot out.png 'http://localhost:5175/?boot=hold'`
    for loading, `HOLD=1` without the parameter for the title.
-3. `src/app.ts` state machine, menu, pause, results. Old setup form removed.
+3. `src/app.ts` state machine, menu, pause, results. Old setup form removed. Done 2026-09-27:
+   menu (Race, Settings), settings (sound), setup as a screen with Back, pause with inline quit
+   confirm, results; setup remembered in localStorage; Escape pauses and goes back; the New race
+   pill is gone. The interim setup rows remain until step 6 replaces them with the opponent
+   cards. Menu backdrop is a slow orbit of the empty track.
 4. Roster data, portraits, opponent cards; setup screen on top of them.
 5. `AiProfile` knobs in `ai.ts`, `simrace` roster mode, tune the ladder.
 6. HUD adjustments: name in the turn chip, toast icons, pause button, portrait on AI turns.

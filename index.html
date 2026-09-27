@@ -70,12 +70,47 @@
           <path d="M14 26 V8 a4 4 0 0 1 8 0 v14 l2-1 a3.5 3.5 0 0 1 5 2 l1.5-0.5 a3.5 3.5 0 0 1 5 2.5 l1.5-0.3 a3 3 0 0 1 3.5 3 v9 c0 6-4 11-11 11 h-5 c-4 0-7-2-9-5 l-7-10 a3.5 3.5 0 0 1 5.5-4.5 z" fill="#fff" stroke="#1d2430" stroke-width="2.2" stroke-linejoin="round"/>
         </svg>
       </div>
-      <button id="newRace" type="button" class="btn">New race</button>
+      <button id="pauseBtn" type="button" class="btn btn-icon" aria-label="Pause" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
     </div>
-    <div id="setup">
+    <!-- Screens (src/app.ts). Each is a glass card over the live scene; one is shown at a time. -->
+    <div id="menu" class="screen" hidden>
+      <div class="menu-card">
+        <img class="menu-mark" src="/mark.svg" alt="" />
+        <div class="menu-word">NEPPIS</div>
+        <div class="col">
+          <button type="button" id="menuRace" class="btn btn-menu btn-primary"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4h11l-2 4 2 4H6"/></svg>Race</button>
+          <button type="button" id="menuSettings" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM10.3 3.5h3.4l.5 2.3 1.9 1.1 2.2-.8 1.7 3-1.7 1.5v2.2l1.7 1.5-1.7 3-2.2-.8-1.9 1.1-.5 2.3h-3.4l-.5-2.3-1.9-1.1-2.2.8-1.7-3 1.7-1.5v-2.2L4 9.1l1.7-3 2.2.8 1.9-1.1z"/></svg>Settings</button>
+        </div>
+        <div class="menu-foot muted" id="menuVersion"></div>
+      </div>
+    </div>
+    <div id="settings" class="screen" hidden>
+      <div class="card screen-card">
+        <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2></div>
+        <div class="list">
+          <div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><span class="name">Sound</span><button type="button" id="soundSwitch" class="switch" role="switch" aria-checked="true" aria-label="Sound"></button></div>
+        </div>
+      </div>
+    </div>
+    <div id="pause" class="screen" hidden>
+      <div class="card screen-card">
+        <h2>Paused</h2>
+        <div class="col" id="pauseMain">
+          <button type="button" id="pauseResume" class="btn btn-primary btn-block">Resume</button>
+          <button type="button" id="pauseSettings" class="btn btn-block">Settings</button>
+          <button type="button" id="pauseQuit" class="btn btn-block btn-danger">Quit to menu</button>
+        </div>
+        <div class="col" id="pauseConfirm" hidden>
+          <p class="sub">Quit this race?</p>
+          <button type="button" id="pauseKeep" class="btn btn-primary btn-block">Keep racing</button>
+          <button type="button" id="pauseQuitYes" class="btn btn-block btn-danger">Quit</button>
+        </div>
+      </div>
+    </div>
+    <div id="setup" class="screen" hidden>
       <form id="setupForm" class="card">
-        <h1>Neppis</h1>
-        <p class="sub">Finnish flick-car racing. Three flicks per turn. Stay on the track, keep the rubber side down.</p>
+        <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Race</h2></div>
+        <p class="sub">Three flicks per turn. Stay on the track, keep the rubber side down.</p>
         <div class="setup-grid">
           <div id="playerRows"></div>
           <div class="setup-side">
@@ -87,7 +122,17 @@
         </div>
       </form>
     </div>
-    <div id="results" hidden></div>
+    <div id="results" class="screen" hidden>
+      <div class="card screen-card">
+        <h2 id="resultsTitle"></h2>
+        <ol id="resultsList"></ol>
+        <div class="col">
+          <button type="button" id="resultsAgain" class="btn btn-primary btn-block">Race again</button>
+          <button type="button" id="resultsSetup" class="btn btn-block">Change setup</button>
+          <button type="button" id="resultsMenu" class="btn btn-block">Menu</button>
+        </div>
+      </div>
+    </div>
     <div id="kit" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

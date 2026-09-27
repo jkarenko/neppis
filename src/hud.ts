@@ -1,4 +1,4 @@
-import type { Game, Player, PlayerSetup } from './game.ts';
+import type { Game, PlayerSetup } from './game.ts';
 import { PLAYER_COLORS } from './config.ts';
 import { DEFAULT_GRID, DRIVER_BY_ID, ROSTER, driverByName } from './roster.ts';
 import { icon } from './icons.ts';
@@ -6,6 +6,31 @@ import { icon } from './icons.ts';
 // Interim: until the setup screen from docs/ui-plan.md exists, AI rows get roster drivers by name, and a typed
 // name that matches a driver takes that driver's profile.
 const AI_NAMES = DEFAULT_GRID.map((id) => DRIVER_BY_ID[id].name);
+
+/** The last grid, so a hot-seat group does not retype names every race. */
+interface SavedSetup {
+  players: { name: string; ai: boolean }[];
+  laps: number;
+}
+const SETUP_KEY = 'neppis.setup';
+function loadSetup(): SavedSetup | null {
+  try {
+    const raw = localStorage.getItem(SETUP_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as SavedSetup;
+    if (!Array.isArray(v.players) || v.players.length === 0 || v.players.length > 6) return null;
+    return { players: v.players.map((p) => ({ name: String(p.name).slice(0, 16), ai: Boolean(p.ai) })), laps: Math.max(1, Math.min(5, Number(v.laps) || 1)) };
+  } catch {
+    return null;
+  }
+}
+function saveSetup(v: SavedSetup): void {
+  try {
+    localStorage.setItem(SETUP_KEY, JSON.stringify(v));
+  } catch {
+    /* private mode: the form simply starts empty next time */
+  }
+}
 
 function hex(c: number): string {
   return '#' + c.toString(16).padStart(6, '0');
@@ -18,7 +43,6 @@ export class Hud {
   private readonly message = document.getElementById('message')!;
   private readonly setup = document.getElementById('setup')!;
   private readonly rows = document.getElementById('playerRows')!;
-  private readonly results = document.getElementById('results')!;
   private messageTimer = 0;
 
   showSetup(onStart: (setups: PlayerSetup[], laps: number) => void): void {
@@ -26,8 +50,14 @@ export class Hud {
     const add = document.getElementById('addPlayer') as HTMLButtonElement;
     const lapsInput = document.getElementById('laps') as HTMLInputElement;
     if (this.rows.childElementCount === 0) {
-      this.addRow('Player 1', false);
-      this.addRow(AI_NAMES[0], true);
+      const saved = loadSetup();
+      if (saved) {
+        for (const r of saved.players) this.addRow(r.name, r.ai);
+        lapsInput.value = String(saved.laps);
+      } else {
+        this.addRow('Player 1', false);
+        this.addRow(AI_NAMES[0], true);
+      }
     }
     add.onclick = () => {
       if (this.rows.childElementCount >= 6) return;
@@ -50,10 +80,10 @@ export class Hud {
         setups.push({ name, ai, profile: ai ? driverByName(name)?.profile : undefined });
       }
       if (setups.length === 0) return;
-      this.setup.hidden = true;
-      onStart(setups, Math.max(1, Math.min(5, Number(lapsInput.value) || 1)));
+      const laps = Math.max(1, Math.min(5, Number(lapsInput.value) || 1));
+      saveSetup({ players: setups.map((p) => ({ name: p.name, ai: p.ai })), laps });
+      onStart(setups, laps);
     };
-    this.results.hidden = true;
     this.setup.hidden = false;
   }
 
@@ -65,10 +95,8 @@ export class Hud {
     return free[Math.floor(Math.random() * free.length)].name;
   }
 
-  /** Scenario mode starts the race without the form. */
   hideSetup(): void {
     this.setup.hidden = true;
-    this.results.hidden = true;
   }
 
   private addRow(name: string, ai: boolean): void {
@@ -144,18 +172,5 @@ export class Hud {
     this.message.classList.add('show');
     window.clearTimeout(this.messageTimer);
     this.messageTimer = window.setTimeout(() => this.message.classList.remove('show'), ms);
-  }
-
-  showResults(placings: Player[], onAgain: () => void): void {
-    this.results.innerHTML = `<div class="card">
-      <h2>${placings[0].name} wins!</h2>
-      <ol>${placings.map((p) => `<li><span style="color:${hex(p.color)}">●</span> ${p.name}</li>`).join('')}</ol>
-      <button type="button" class="btn btn-primary btn-block">Race again</button>
-    </div>`;
-    (this.results.querySelector('button') as HTMLButtonElement).onclick = () => {
-      this.results.hidden = true;
-      onAgain();
-    };
-    this.results.hidden = false;
   }
 }

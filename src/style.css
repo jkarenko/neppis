@@ -82,7 +82,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 #boot.is-failed .boot-fail { display: flex; }
 #boot.is-failed .btn { background: #1d2430; color: var(--text); border-color: transparent; }
 @media (max-width: 600px) { .boot-mark { width: 200px; margin-bottom: -4px; } .boot-word { font-size: 44px; } .boot-bar { width: 220px; } }
-@media (max-height: 420px) { .boot-mark { width: 160px; margin-bottom: -4px; } .boot-word { font-size: 36px; } .boot-progress, .boot-play, .boot-fail { margin-top: 12px; } .boot-inner { gap: 6px; } }
+@media (max-height: 420px) { .menu-mark { width: 110px; } .menu-word { font-size: 28px; margin-bottom: 4px; } .menu-card { gap: 8px; } .boot-mark { width: 160px; margin-bottom: -4px; } .boot-word { font-size: 36px; } .boot-progress, .boot-play, .boot-fail { margin-top: 12px; } .boot-inner { gap: 6px; } }
 
 /* ---- Components ---- */
 .glass { background: var(--surface); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
@@ -119,6 +119,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 .row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-label); }
 .list { display: flex; flex-direction: column; gap: 2px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
 
 /* Form controls: text, select, stepper, switch. All 44 tall. */
 .field { display: flex; align-items: center; min-height: var(--h-touch); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-chip); background: var(--surface-raised); color: var(--text); font: inherit; font-size: var(--fs-control); width: 100%; }
@@ -208,12 +209,32 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
   #finger .trail { transform: scaleY(0.5); opacity: 1; }
   #finger .touch { opacity: 0.6; }
 }
-#newRace { pointer-events: auto; position: absolute; right: var(--inset-right); bottom: var(--inset-bottom); }
+#pauseBtn { pointer-events: auto; position: absolute; right: var(--inset-right); bottom: var(--inset-bottom); }
+#pauseBtn[hidden] { display: none; }
 
-/* ---- Overlays (interim setup and results, replaced in step 5) ---- */
-#setup, #results { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15, 20, 30, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10; pointer-events: auto; }
-#setup[hidden], #results[hidden] { display: none; }
-#setupForm, #results > div { width: min(92vw, 560px); }
+/* ---- Screens (src/app.ts): one glass card over the live scene at a time ---- */
+.screen { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left); z-index: 10; pointer-events: auto; opacity: 1; transition: opacity var(--t-base); }
+.screen[hidden] { display: none; }
+.screen.is-leaving { opacity: 0; pointer-events: none; }
+#setup, #results, #pause, #settings { background: rgba(15, 20, 30, 0.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+#pause { background: rgba(15, 20, 30, 0.55); }
+.screen-card { width: min(92vw, 420px); }
+.screen-head { display: flex; align-items: center; gap: 12px; margin: -4px 0 8px -6px; }
+.screen-head h2 { margin: 0; }
+.screen-head .back { border-color: transparent; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+#setupForm { width: min(92vw, 560px); }
+/* Menu: the mark and word carry the title's lockup through at a smaller size, then the items. */
+.menu-card { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(92vw, 360px); }
+.menu-mark { width: 180px; height: auto; margin-bottom: -6px; filter: drop-shadow(0 1px 2px rgba(255,255,255,0.35)); }
+.menu-word { font-size: 40px; font-weight: 800; letter-spacing: 0.12em; color: #1d2430; line-height: 1; margin-bottom: 10px; }
+.menu-card .col { width: 100%; }
+.menu-card .btn-menu { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18); }
+.menu-card .btn-menu.btn-primary { background: #1d2430; color: var(--text); }
+.menu-foot { font-size: var(--fs-label); color: #5c6570; margin-top: 8px; }
+#results ol { padding-left: 22px; margin: 0 0 16px; }
+#results li { margin: 6px 0; }
+#results li .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
+#pause .sub { text-align: center; margin: 0 0 4px; }
 /* The racer list and, beside it, the controls that must never move when a row is added. */
 .setup-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
 /* The list reserves the height of six racers, so the card is the same size with one or six and nothing moves. */
@@ -225,13 +246,11 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 }
 /* Too short for the card: pin it to the top and let the overlay scroll instead of moving anything. */
 @media (max-height: 620px) {
-  #setup, #results { place-items: start center; overflow: auto; padding: 12px 0; }
+  .screen { place-items: start center; overflow: auto; }
 }
 .prow { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; margin: 6px 0; }
 .prow .swatch { width: 14px; height: 14px; border-radius: 50%; }
 .prow select.field { width: auto; min-width: 104px; }
-#results ol { padding-left: 22px; margin: 0 0 14px; }
-#results li { margin: 6px 0; }
 
 /* ---- Kit page (?kit): every component in every state, for the screenshot contact sheet. ---- */
 /* In kit mode the page itself scrolls, so a full-page screenshot captures all of it; the scene stays fixed behind. */
@@ -243,7 +262,7 @@ html.kit, html.kit body { overflow: auto; height: auto; min-height: 100%; }
 #kit .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
 #kit .swatch { width: 84px; padding: 8px; border-radius: var(--r-chip); font-size: var(--fs-label); color: var(--text); text-shadow: 0 1px 2px rgba(0,0,0,0.6); border: 1px solid var(--line); }
 .strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-#kit .col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 360px); }
+#kit .col { width: min(100%, 360px); }
 #kit .cards { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 #kit .icons { display: flex; flex-wrap: wrap; gap: 6px; }
 #kit .icons .chip { padding: 0 10px; gap: 6px; font-size: var(--fs-label); }
