@@ -28,6 +28,37 @@ function rotateY(v: [number, number, number], yaw: number): { x: number; y: numb
  * Rolling, skidding, grip and tipping all come out of the wheels' contact with the sand.
  * The only non-contact force is a rolling-resistance brake on each axle.
  */
+export type HeightAt = (x: number, z: number) => number;
+
+/** A resting pose: chassis centre and orientation. */
+export interface RestPose {
+  x: number;
+  y: number;
+  z: number;
+  q: THREE.Quaternion;
+}
+
+/**
+ * Where a car with this yaw would rest at (x, z): pitched and rolled onto the plane through the ground under its
+ * four wheels, so a car on the ridge leans with it. Wheel positions are sampled at the yaw only; the lean itself
+ * moves them by millimetres, which is below the terrain's own texture.
+ */
+export function restPose(x: number, z: number, yaw: number, heightAt: HeightAt): RestPose {
+  const h = WHEEL_OFFSETS.map((off) => {
+    const p = rotateY(off, yaw);
+    return heightAt(x + p.x, z + p.z);
+  });
+  // Offsets: 0 front-left, 1 front-right, 2 rear-left, 3 rear-right (+X forward, +Z right).
+  const pitch = Math.atan2((h[0] + h[1] - h[2] - h[3]) / 2, 2 * WHEEL_X); // nose up is positive about +Z
+  const roll = Math.atan2((h[0] + h[2] - h[1] - h[3]) / 2, 2 * WHEEL_Z); // left side up tilts the car right, about +X
+  const q = new THREE.Quaternion()
+    .setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), pitch))
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), roll));
+  const y = (h[0] + h[1] + h[2] + h[3]) / 4 + CAR.restHeight + 0.02;
+  return { x, y, z, q };
+}
+
 export class Car {
   readonly body: RAPIER.RigidBody;
   readonly wheels: RAPIER.RigidBody[] = [];
@@ -37,6 +68,8 @@ export class Car {
   private readonly wheelMeshes: THREE.Mesh[] = [];
   private readonly world: RAPIER.World;
   private restTime = 0;
+  /** While aiming, the nose turn is shown on the meshes only; the bodies stay asleep where they are. */
+  private preview: RestPose | null = null;
 
   constructor(world: RAPIER.World, color: number, x: number, z: number, groundY: number, yaw: number) {
     this.world = world;
@@ -191,31 +224,45 @@ export class Car {
     return Math.hypot(v.x, v.y, v.z);
   }
 
-  private placeAt(x: number, y: number, z: number, yaw: number): void {
-    const q = yawQuat(yaw);
+  private placeAt(pose: RestPose): void {
+    const { x, y, z, q } = pose;
     const zero = { x: 0, y: 0, z: 0 };
     this.body.setTranslation({ x, y, z }, true);
     this.body.setRotation(q, true);
     this.body.setLinvel(zero, true);
     this.body.setAngvel(zero, true);
     this.wheels.forEach((w, i) => {
-      const p = rotateY(WHEEL_OFFSETS[i], yaw);
+      const p = new THREE.Vector3(...WHEEL_OFFSETS[i]).applyQuaternion(q);
       w.setTranslation({ x: x + p.x, y: y + p.y, z: z + p.z }, true);
       w.setRotation(q, true);
       w.setLinvel(zero, true);
       w.setAngvel(zero, true);
     });
     this.restTime = 0;
+    this.preview = null;
     this.sync();
   }
 
-  setPose(x: number, z: number, yaw: number, groundY: number): void {
-    this.placeAt(x, groundY + CAR.restHeight + 0.02, z, yaw);
+  /** Set the car down at rest, leaning with the ground under its wheels. */
+  setPose(x: number, z: number, yaw: number, heightAt: HeightAt): void {
+    this.placeAt(restPose(x, z, yaw, heightAt));
   }
 
-  setYaw(yaw: number): void {
+  /** Show the nose turned to this yaw, conforming to the ground, without touching the physics bodies. */
+  setPreview(yaw: number, heightAt: HeightAt): void {
     const t = this.body.translation();
-    this.placeAt(t.x, t.y, t.z, yaw);
+    this.preview = restPose(t.x, t.z, yaw, heightAt);
+    this.sync();
+  }
+
+  clearPreview(): void {
+    this.preview = null;
+    this.sync();
+  }
+
+  /** Move the bodies to the previewed pose, ready to launch. */
+  commitPreview(): void {
+    if (this.preview) this.placeAt(this.preview);
   }
 
   /**
@@ -258,6 +305,16 @@ export class Car {
   }
 
   sync(): void {
+    if (this.preview) {
+      const { x, y, z, q } = this.preview;
+      this.chassisMesh.position.set(x, y, z);
+      this.chassisMesh.quaternion.copy(q);
+      this.wheelMeshes.forEach((m, i) => {
+        m.position.set(x, y, z).add(new THREE.Vector3(...WHEEL_OFFSETS[i]).applyQuaternion(q));
+        m.quaternion.copy(q);
+      });
+      return;
+    }
     const t = this.body.translation();
     const r = this.body.rotation();
     this.chassisMesh.position.set(t.x, t.y, t.z);

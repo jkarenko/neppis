@@ -14,7 +14,7 @@ function trial(startIdx: number, angleOff: number, power: number): string {
   const p = track.pointAt(startIdx);
   const tg = track.tangentAt(startIdx);
   const yaw = Math.atan2(-tg.z, tg.x) + angleOff;
-  car.setPose(p.x, p.z, yaw, track.heightAt(p.x, p.z));
+  car.setPose(p.x, p.z, yaw, (a, b) => track.heightAt(a, b));
   for (let i = 0; i < 30; i++) world.step();
   car.flick(power);
   let t = 0;

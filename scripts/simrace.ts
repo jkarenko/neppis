@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { initPhysics } from '../src/physics.ts';
 import { Track, TRACKS } from '../src/track.ts';
 import { Game } from '../src/game.ts';
-import { DEFAULT_RULES, PHYS_DT } from '../src/config.ts';
+import { DEFAULT_RULES, FLICK, PHYS_DT } from '../src/config.ts';
 
 const world = await initPhysics();
 const track = new Track(TRACKS[0]);
@@ -40,6 +40,7 @@ while (!over && t < 600) {
   t += PHYS_DT;
 }
 console.log(`simulated ${t.toFixed(0)} s, ${turns} turns, ${flicks} flicks, outcomes`, outcomes);
+console.log(`${game.aiClamped} of ${flicks} flicks had their line pulled into the ${FLICK.maxTurnDeg}° turn wedge`);
 if (!over) {
   console.log('race did not finish', game.players.map((p) => `${p.name} lap=${p.lap} t=${p.t.toFixed(2)}`));
   process.exit(1);

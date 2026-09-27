@@ -36,6 +36,8 @@ export const FLICK = {
   cancelPx: 44,
   /** speed = maxSpeed * power^speedExp. */
   speedExp: 0.5,
+  /** A flick may turn the nose at most this far either way from the heading the car came to rest with. */
+  maxTurnDeg: 45,
 };
 
 export const WHEEL = {

@@ -170,6 +170,8 @@ there is no desktop.
 0. Scenario mode and the test track (done 2026-09-27): `?scenario=` loads a known situation, the
    debug handle drives it, `pnpm scenario` reports state and shots. Every later step is checked
    through it.
+0b. Turn wedge and mesh-only aim preview (done 2026-09-27), see `gameplay.md` section 3. The
+   wedge drawn on the ground is still to do, in step 7.
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
    baseline.
 2. Boot/title screen with progress and the audio gate.

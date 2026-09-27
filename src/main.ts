@@ -145,14 +145,21 @@ async function main(): Promise<void> {
     target: () => (game.currentIsHuman ? game.current!.car.position : null),
     onAim: (aim) => {
       if (!aim || !game.current) {
+        game.cancelAim();
         indicator.hide();
         hud.showPower(null);
         return;
       }
       endFinger();
-      // Turning the nose before a flick is allowed, so the car simply faces where you aim.
-      game.rotateCurrent(Math.atan2(-aim.dir.z, aim.dir.x));
-      indicator.show(game.current.car.position, aim.dir, aim.current, aim.power, aim.valid);
+      // The nose turns towards the aim as far as the turn wedge allows; the ribbon shows the line the car will
+      // actually take, drawn from where the finger would be on that line.
+      const yaw = game.rotateCurrent(Math.atan2(-aim.dir.z, aim.dir.x));
+      if (yaw === null) return;
+      const dir = { x: Math.cos(yaw), z: -Math.sin(yaw) };
+      const pos = game.current.car.position;
+      const reach = Math.hypot(aim.current.x - pos.x, aim.current.z - pos.z);
+      const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(reach));
+      indicator.show(pos, dir, from, aim.power, aim.valid);
       hud.showPower(aim.valid ? aim.power : null);
     },
     onFlick: (dir, power) => {
@@ -235,7 +242,7 @@ async function main(): Promise<void> {
     });
     const aimDir = (headingDeg: number) => {
       const pos = game.current!.car.position;
-      const yaw = tangentYaw(pos.x, pos.z) - (headingDeg * Math.PI) / 180;
+      const yaw = game.clampYaw(tangentYaw(pos.x, pos.z) - (headingDeg * Math.PI) / 180);
       return { yaw, dir: { x: Math.cos(yaw), z: -Math.sin(yaw) } };
     };
     const aim = (headingDeg: number, power: number) => {

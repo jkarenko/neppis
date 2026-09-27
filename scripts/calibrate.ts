@@ -53,7 +53,7 @@ async function main() {
     let off = 0;
     const trials = Number(process.env.TRIALS ?? 3);
     for (let k = 0; k < trials; k++) {
-      car.setPose(slot.x, slot.z, slot.yaw, track.heightAt(slot.x, slot.z));
+      car.setPose(slot.x, slot.z, slot.yaw, (a, b) => track.heightAt(a, b));
       for (let i = 0; i < 30; i++) world.step();
       car.flick(p);
       let t = 0;

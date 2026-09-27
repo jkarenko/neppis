@@ -4,7 +4,7 @@ import { Car } from './car.ts';
 import type { Track, TrackQuery } from './track.ts';
 import { PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
 import { Rng } from './rng.ts';
-import { planFlick, type Plan } from './ai.ts';
+import { clampTurn, planFlick, type Plan } from './ai.ts';
 
 /** Where to put a car instead of its grid slot, in track terms so scenarios survive track edits. */
 export interface TrackPose {
@@ -78,6 +78,11 @@ export class Game {
   private finishedCount = 0;
   private aiTimer = 0;
   private aiPlan: Plan | null = null;
+  /** The heading the current car came to rest with: the centre of the turn wedge for the next flick. */
+  private restYaw = 0;
+  /** AI flicks whose wanted line was outside the wedge, for the headless race report. */
+  aiClamped = 0;
+  readonly heightAt = (x: number, z: number): number => this.track.heightAt(x, z);
 
   constructor(
     readonly world: RAPIER.World,
@@ -160,6 +165,7 @@ export class Game {
   }
 
   private startTurn(): void {
+    for (const pl of this.players) pl.car.clearPreview();
     const p = this.players[this.order[this.orderPos]];
     this.current = p;
     this.flicksLeft = this.rules.flicksPerTurn;
@@ -169,6 +175,7 @@ export class Game {
       this.place(p, { x: pos.x, z: pos.z, yaw: p.car.yaw });
     }
     this.turnStart = this.poseOf(p.car);
+    this.restYaw = p.car.yaw;
     this.phase = 'aim';
     this.events.turnStart(p);
     this.events.changed();
@@ -180,14 +187,31 @@ export class Game {
     return { x: pos.x, z: pos.z, yaw: car.yaw };
   }
 
-  rotateCurrent(yaw: number): void {
-    if (this.phase !== 'aim' || !this.current || this.current.ai) return;
-    this.current.car.setYaw(yaw);
+  /**
+   * Turn the nose towards a yaw for the coming flick, as far as the turn wedge allows. Only the meshes move until
+   * the flick is released. Returns the yaw actually taken, or null when no flick can be aimed now.
+   */
+  rotateCurrent(yaw: number): number | null {
+    if (this.phase !== 'aim' || !this.current || this.current.ai) return null;
+    const taken = clampTurn(yaw, this.restYaw);
+    this.current.car.setPreview(taken, this.heightAt);
+    return taken;
   }
 
-  flick(dir: { x: number; z: number }, power: number): void {
+  /** The aim was let go without a flick: the nose goes back to where the car rests. */
+  cancelAim(): void {
+    if (this.phase === 'aim' && this.current && !this.current.ai) this.current.car.clearPreview();
+  }
+
+  /** The nose heading a flick aimed at this yaw would take. */
+  clampYaw(yaw: number): number {
+    return clampTurn(yaw, this.restYaw);
+  }
+
+  flick(_dir: { x: number; z: number }, power: number): void {
     if (this.phase !== 'aim' || !this.current) return;
     const car = this.current.car;
+    car.commitPreview();
     this.flickStart = this.poseOf(car);
     const q = this.track.query(this.flickStart.x, this.flickStart.z);
     this.startedOffTrack = !q.onTrack;
@@ -231,6 +255,7 @@ export class Game {
         if (this.current.finished || this.flicksLeft <= 0) {
           this.nextTurn();
         } else {
+          this.restYaw = this.current.car.yaw;
           this.phase = 'aim';
           this.events.changed();
           if (this.current.ai) this.scheduleAi(0.5);
@@ -267,11 +292,11 @@ export class Game {
     switch (outcome) {
       case 'kelli':
         this.place(p, this.rules.kelli === 'turnStart' ? this.turnStart : this.flickStart);
-        this.events.message(`Kelli! ${p.name} goes back to where the flick started.`);
+        this.events.message(`Flip! ${p.name} goes back to where the flick started.`);
         break;
       case 'puolikelli':
         this.place(p, this.midpointPose());
-        this.events.message(`Puolikelli. ${p.name} is put back halfway along the flick.`);
+        this.events.message(`Tipped over. ${p.name} is put back halfway along the flick.`);
         break;
       case 'offtrack':
         this.place(p, this.rules.offTrack === 'flickStart' || !this.lastOnTrack ? this.flickStart : this.lastOnTrack);
@@ -319,7 +344,7 @@ export class Game {
   }
 
   private place(p: Player, pose: Pose): void {
-    p.car.setPose(pose.x, pose.z, pose.yaw, this.track.heightAt(pose.x, pose.z));
+    p.car.setPose(pose.x, pose.z, pose.yaw, this.heightAt);
     this.trackLap(p, this.track.query(pose.x, pose.z));
   }
 
@@ -351,8 +376,12 @@ export class Game {
   private runAi(): void {
     if (this.phase !== 'aim' || !this.current || !this.current.ai) return;
     if (!this.aiPlan) {
-      this.aiPlan = planFlick(this.track, this.current.car, this.rng);
-      this.current.car.setYaw(this.aiPlan.yaw);
+      const plan = planFlick(this.track, this.current.car, this.rng);
+      // The planner respects the wedge itself; the clamp here only catches its aim noise spilling over the edge.
+      plan.yaw = clampTurn(plan.yaw, this.restYaw);
+      if (plan.clamped) this.aiClamped++;
+      this.aiPlan = plan;
+      this.current.car.setPreview(plan.yaw, this.heightAt);
       this.aiTimer = 0.45;
       return;
     }

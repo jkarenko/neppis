@@ -33,10 +33,7 @@ and leaving the track is *off track*. The code still calls the first two kelli a
   first 12 px, full power at a third of the shorter viewport side. A drag shorter than 44 px is
   not a flick, and releasing it simply cancels. The ribbon colour shows the band: blue gentle
   (under 0.3), green safe, yellow brisk (0.6 and up), red risky (0.8 and up).
-- **The nose follows the aim.** While aiming, the car is turned on the spot to face the flick
-  direction, so today any heading can be chosen before every flick, and the turn is done by
-  moving the physics bodies, which lets the track and other cars push the car about while it
-  is being aimed. Section 3 changes both.
+- **The nose follows the aim,** as far as the turn wedge allows (section 3).
 - **Launch.** Release hands the car over already rolling along its nose at
   `20 × power^0.5` units per second with the wheels spinning to match, as if it had run up on
   flat sand. Nothing pushes it after that: rolling, skidding, grip, the ridges, the jump and
@@ -46,17 +43,17 @@ and leaving the track is *off track*. The code still calls the first two kelli a
 
   | power | 0.1 | 0.3 | 0.5 | 0.7 | 0.9 | 1.0 |
   |---|---|---|---|---|---|---|
-  | distance, units | 2.1 | 6.1 | 10.2 | 12.1 | 15.0 | 15.1 |
+  | distance, units | 2.2 | 6.1 | 10.0 | 12.4 | 15.3 | 16.5 |
 
 - **Resolution.** The flick is over when the car has been at rest for 0.35 s (or after 12 s of
   flight). The outcome is judged from how the car lies and where it is (section 4), the flick
   count goes down, and after a short pause (0.2 s, or 0.6 s after a penalty) the next flick or
   the next turn begins.
 
-## 3. Turning and aiming (planned changes)
+## 3. Turning and aiming
 
-Today the nose turns freely to the aim, so a car that ends a flick facing backwards can simply
-be aimed forwards again. The planned rule:
+Implemented 2026-09-27. Before this the nose turned freely to the aim, so a car that ended a flick
+facing backwards could simply be aimed forwards again.
 
 - **Each flick may turn the car at most 45° either way** from the heading it has when that
   flick is aimed, that is, the heading it came to rest with after the previous flick, or the
@@ -75,14 +72,15 @@ be aimed forwards again. The planned rule:
   point, and the tip midpoint means the direction of travel there. So a car returned after
   leaving the track in a bend is facing the way it was going, which is usually towards the
   edge: the limit turns that into the actual penalty.
-- **The aim is a preview, not a physics move.** Today each pointer move teleports all five
-  rigid bodies (chassis and four wheels) to the new heading and wakes them. The wheels sit away
-  from the centre, so turning on the spot sweeps them through a ridge or a neighbouring car and
-  the solver shoves the overlapping bodies apart: the car drifts while being aimed, and rivals
-  can be nudged for free. Planned: while aiming, only the mesh turns. The bodies stay asleep
+- **The aim is a preview, not a physics move.** Before this, each pointer move teleported all
+  five rigid bodies (chassis and four wheels) to the new heading and woke them. The wheels sit
+  away from the centre, so turning on the spot swept them through a ridge or a neighbouring car
+  and the solver shoved the overlapping bodies apart: the car drifted while being aimed, and
+  rivals could be nudged for free. Now only the meshes turn while aiming. The bodies stay asleep
   where the last flick left them. At release the car is placed once at the aim pose and
   launched in the same physics step, so a car parked against a rival simply starts its flick
-  in contact with it. The AI's visible nose turn before its flick uses the same preview.
+  in contact with it. The AI's visible nose turn before its flick uses the same preview. An aim
+  let go without a flick puts the nose back; previews are cleared at every turn start.
 - **The preview conforms to the track.** The turn is about the car's own up axis, the normal of
   the surface it rests on, not world up: a car leaning on the ridge keeps its lean while the
   nose swings, and the 45° wedge is measured about that same axis. After each swing the
@@ -96,12 +94,21 @@ be aimed forwards again. The planned rule:
   the ridge) is an experiment for later: measure it on the calibration oval first, flips and
   distances by heading and power, and only then decide. It would also invalidate the flat
   distance table the AI plans with.
-- **The AI plays by the same rule.** The planner's search for the longest safe straight is
-  restricted to the wedge, and a driver whose safe line is outside it takes the best point at
-  the edge (see `drivers.md`).
+- **The AI plays by the same rule.** The planner still finds the longest safe straight, then
+  pulls the line into the wedge if it lies outside, and cuts the power to what stays on the
+  track along the pulled line. Its aim noise is clamped again by the game so it can never spill
+  over the edge. `pnpm simrace` reports how many flicks were pulled in; on the Hietsu track it is
+  2 of 76 with the default driver.
 - **Configuration.** `FLICK.maxTurnDeg = 45` in `src/config.ts`, so the number can be tried
-  and changed. `pnpm simrace` should report how many flicks per lap the AI spends turning, as a
-  gauge of whether 45° is too tight.
+  and changed.
+- **Measured** with `pnpm scenario reversed 0,0.5 0,0.5 0,0.5` and `pnpm scenario ridge -80,0.7`:
+  a car facing backwards turns 42° on its first flick and needs three flicks to face forwards;
+  an 80° aim on the ridge is taken at 45°, and a 0.7 flick from the ridge crest at that angle
+  flips the car.
+- **A hole this exposes.** Off track is judged only where the car stops. The reversed car's
+  second flick cut across the infield from the start straight to the back straight and was
+  scored clean, with its lap count going backwards. The rule should also catch a flight that
+  left the track and came back on, placing the car at the last on-track point. Not fixed yet.
 - **Open until tried.** Whether the limit is per flick (as above) or per three-flick turn.
   Per flick is the assumption. Per turn would make a spin cost most of a round and is probably
   too harsh, but it is a one-line change if 45° per flick turns out to be too forgiving.
@@ -166,7 +173,7 @@ aggression 0.85, aim noise 0.03 rad). The roster of distinct drivers is in `driv
 | `FLICK.deadZonePx` | 12 | drag that counts as no power |
 | `FLICK.cancelPx` | 44 | shorter drags are not flicks |
 | `FLICK.grabRadius` / `grabRadiusPx` | 1.0 / 36 | where a drag may start, ground units / screen px |
-| `FLICK.maxTurnDeg` | 45 | planned: turn allowed per flick, degrees either way |
+| `FLICK.maxTurnDeg` | 45 | turn allowed per flick, degrees either way |
 | `WHEEL.rollingCoefficient` | 0.12 | rolling resistance, fraction of g |
 
 ## 9. Scenarios: testing a situation
