@@ -189,10 +189,16 @@ select.field { appearance: none; -webkit-appearance: none; padding-right: 34px; 
 #setupForm, #results > div { width: min(92vw, 560px); }
 /* The racer list and, beside it, the controls that must never move when a row is added. */
 .setup-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+/* The list reserves the height of six racers, so the card is the same size with one or six and nothing moves. */
+#playerRows { min-height: 336px; }
 .setup-side { display: flex; flex-direction: column; gap: 12px; align-items: stretch; min-width: 200px; }
 .setup-side .btn-primary { margin-top: 8px; }
 @media (max-width: 600px) {
   .setup-grid { grid-template-columns: 1fr; }
+}
+/* Too short for the card: pin it to the top and let the overlay scroll instead of moving anything. */
+@media (max-height: 620px) {
+  #setup, #results { place-items: start center; overflow: auto; padding: 12px 0; }
 }
 .prow { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; margin: 6px 0; }
 .prow .swatch { width: 14px; height: 14px; border-radius: 50%; }
