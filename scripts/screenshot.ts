@@ -1,5 +1,5 @@
 // Headless screenshot(s) of the running dev server.
-//   pnpm screenshot [out.png] [url]
+//   pnpm screenshot [out.png] [url]     url may carry a scenario, e.g. 'http://localhost:5175/?scenario=ridge'
 //   VIEWPORT=iphone,ipad-landscape,1920x1080  comma-separated presets or WxH[@scale]; "all" = every preset.
 //   Default is the iPad at its real resolution (ipad-landscape@2). Named presets are CSS sizes at scale 1 unless
 //   you append @2 or @3, so "all" is a fast 1x layout check, not device-resolution detail.
@@ -8,34 +8,8 @@
 //   resized in place, so a full set takes about a minute.
 //   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
 import { readFile } from 'node:fs/promises';
-import { chromium, type Page } from 'playwright';
-
-const PRESETS: Record<string, string> = {
-  iphone: '393x852',
-  'iphone-landscape': '852x393',
-  ipad: '1032x1376',
-  'ipad-landscape': '1376x1032',
-  'macbook-air': '1470x956',
-  'desktop-1080p': '1920x1080',
-  'laptop-1366': '1366x768',
-  'laptop-1536': '1536x864',
-  'android-phone': '412x915',
-  'android-phone-landscape': '915x412',
-  'android-tablet': '800x1280',
-  'android-tablet-landscape': '1280x800',
-};
-
-interface Viewport { label: string; width: number; height: number; scale: number }
-
-function parseViewport(spec: string): Viewport {
-  const m = /^([a-z0-9-]+?)(?:@(\d+(?:\.\d+)?))?$/.exec(spec);
-  if (!m) throw new Error(`bad viewport ${JSON.stringify(spec)}`);
-  const [, name, scale] = m as unknown as [string, string, string | undefined];
-  const size = PRESETS[name] ?? name;
-  const s = /^(\d+)x(\d+)$/.exec(size);
-  if (!s) throw new Error(`viewport must be a preset (${Object.keys(PRESETS).join(', ')}) or WxH[@scale], got ${JSON.stringify(spec)}`);
-  return { label: spec, width: Number(s[1]), height: Number(s[2]), scale: Number(scale ?? 1) };
-}
+import type { Page } from 'playwright';
+import { PRESETS, launchBrowser, openPage, parseViewport, type Viewport } from './lib/browser.ts';
 
 const specs = (process.env.VIEWPORT ?? 'ipad-landscape@2').split(',').map((s) => s.trim()).filter(Boolean);
 const viewports = specs.flatMap((s) => (s === 'all' ? Object.keys(PRESETS) : [s])).map(parseViewport);
@@ -82,9 +56,7 @@ async function flick(page: Page, vp: Viewport, distance: number, stepMs: number)
   }
 }
 
-const browser = await chromium.launch({
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
+const browser = await launchBrowser();
 
 const shots: { label: string; path: string }[] = [];
 const byScale = new Map<number, Viewport[]>();
@@ -92,14 +64,11 @@ for (const vp of viewports) byScale.set(vp.scale, [...(byScale.get(vp.scale) ?? 
 
 for (const [scale, group] of byScale) {
   const first = group[0]!;
-  const page = await browser.newPage({ viewport: { width: first.width, height: first.height }, deviceScaleFactor: scale });
-  page.on('console', (m) => {
-    if (m.type() === 'error' || m.type() === 'warning') console.log(`[browser ${m.type()}] ${m.text()}`);
-  });
-  page.on('pageerror', (e) => console.log(`[browser pageerror] ${e.message}`));
+  const page = await openPage(browser, { ...first, scale });
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
-  await page.click('#start');
+  // A scenario URL starts the race by itself; otherwise submit the setup form.
+  if (await page.isVisible('#start')) await page.click('#start');
   await page.waitForTimeout(Number(process.env.WAIT_MS ?? 2500));
 
   for (const vp of group) {

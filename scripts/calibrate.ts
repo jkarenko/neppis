@@ -2,7 +2,7 @@
 // Run with: pnpm calibrate
 import { initPhysics, RAPIER } from '../src/physics.ts';
 import { Track } from '../src/track.ts';
-import { CAL_TRACK } from './lib/cal-track.ts';
+import { CAL_TRACK } from '../src/tracks/calibration.ts';
 import { Car } from '../src/car.ts';
 import { PHYS_DT, WHEEL, FLICK, TRACK_DETAIL } from '../src/config.ts';
 if (process.env.FINE_CELL) TRACK_DETAIL.fineCell = Number(process.env.FINE_CELL);

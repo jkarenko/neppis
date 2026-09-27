@@ -6,9 +6,22 @@ import { PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
 import { Rng } from './rng.ts';
 import { planFlick, type Plan } from './ai.ts';
 
+/** Where to put a car instead of its grid slot, in track terms so scenarios survive track edits. */
+export interface TrackPose {
+  /** Position along the lap, 0..1. */
+  t: number;
+  /** Extra distance along the lap from t, world units, so "three car lengths before the jump" is expressible. */
+  along?: number;
+  /** Offset from the centreline in world units, positive to the right of travel. */
+  lateral: number;
+  /** Nose heading relative to the direction of travel, radians, positive turns right. */
+  heading: number;
+}
+
 export interface PlayerSetup {
   name: string;
   ai: boolean;
+  pose?: TrackPose;
 }
 
 export interface Player {
@@ -81,21 +94,23 @@ export class Game {
     this.clear();
     const slots = this.track.startSlots(setups.length);
     this.players = setups.map((s, i) => {
-      const slot = slots[i];
+      const slot = s.pose ? this.resolvePose(s.pose) : slots[i];
       const car = new Car(this.world, PLAYER_COLORS[i % PLAYER_COLORS.length], slot.x, slot.z, this.track.heightAt(slot.x, slot.z), slot.yaw);
       this.scene.add(car.mesh);
       const q = this.track.query(slot.x, slot.z);
+      // The grid sits just behind the start line, so the first crossing begins lap 0. A car placed by pose is
+      // already on its first lap.
+      const lap = s.pose ? 0 : -1;
       return {
         id: i,
         name: s.name,
         ai: s.ai,
         color: car.color,
         car,
-        // The grid sits just behind the start line, so the first crossing begins lap 0.
-        lap: -1,
+        lap,
         prevT: q.t,
         t: q.t,
-        progress: q.t - 1,
+        progress: q.t + lap,
         finished: false,
         place: 0,
       };
@@ -104,6 +119,19 @@ export class Game {
     this.finishedCount = 0;
     this.lastOutcome = null;
     this.startRound();
+  }
+
+  /** World position and yaw for a track pose. */
+  resolvePose(pose: TrackPose): { x: number; z: number; yaw: number } {
+    const idx = this.track.indexOffset(pose.t * this.track.n, pose.along ?? 0);
+    const p = this.track.pointAt(idx);
+    const tg = this.track.tangentAt(idx);
+    // right = forward x up, as in Track.query
+    return {
+      x: p.x + -tg.z * pose.lateral,
+      z: p.z + tg.x * pose.lateral,
+      yaw: Math.atan2(-tg.z, tg.x) - pose.heading,
+    };
   }
 
   clear(): void {

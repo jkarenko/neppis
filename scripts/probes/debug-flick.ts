@@ -2,7 +2,7 @@
 // Usage: tsx scripts/probes/debug-flick.ts [power 0..1]
 import { initPhysics, RAPIER } from '../../src/physics.ts';
 import { Track } from '../../src/track.ts';
-import { CAL_TRACK } from '../lib/cal-track.ts';
+import { CAL_TRACK } from '../../src/tracks/calibration.ts';
 import { Car } from '../../src/car.ts';
 import { PHYS_DT } from '../../src/config.ts';
 const p = Number(process.argv[2] ?? '0.5');

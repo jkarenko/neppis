@@ -12,7 +12,8 @@
     "simrace": "tsx scripts/simrace.ts",
     "terrain-risk": "tsx scripts/terrain-risk.ts",
     "surfcheck": "tsx scripts/surfcheck.ts",
-    "screenshot": "tsx scripts/screenshot.ts"
+    "screenshot": "tsx scripts/screenshot.ts",
+    "scenario": "tsx scripts/scenario.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.20.0",

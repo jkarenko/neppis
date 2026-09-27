@@ -2,7 +2,7 @@
 // Exits 1 if any ray misses or lands more than TOLERANCE off the expected physics surface.
 import { initPhysics, RAPIER } from '../src/physics.ts';
 import { Track } from '../src/track.ts';
-import { CAL_TRACK } from './lib/cal-track.ts';
+import { CAL_TRACK } from '../src/tracks/calibration.ts';
 import { TRACK_DETAIL } from '../src/config.ts';
 if (process.env.FINE_CELL) TRACK_DETAIL.fineCell = Number(process.env.FINE_CELL);
 const TOLERANCE = Number(process.env.TOLERANCE ?? 0.003);

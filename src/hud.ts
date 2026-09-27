@@ -46,6 +46,12 @@ export class Hud {
     this.setup.hidden = false;
   }
 
+  /** Scenario mode starts the race without the form. */
+  hideSetup(): void {
+    this.setup.hidden = true;
+    this.results.hidden = true;
+  }
+
   private addRow(name: string, ai: boolean): void {
     const i = this.rows.childElementCount;
     const row = document.createElement('div');

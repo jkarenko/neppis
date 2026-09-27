@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { initPhysics } from './physics.ts';
 import { Track, TRACKS } from './track.ts';
-import { Game, type Player } from './game.ts';
+import { TRACK_BY_NAME } from './tracks/index.ts';
+import { Game, type Player, type PlayerSetup } from './game.ts';
+import { scenarioFromUrl, type CameraMode, type GameState, type NeppisDebug } from './scenario.ts';
 import { FlickIndicator } from './indicator.ts';
 import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
@@ -10,6 +12,7 @@ import { Hud } from './hud.ts';
 import { DEFAULT_RULES, MAX_STEPS_PER_FRAME, PHYS_DT } from './config.ts';
 
 async function main(): Promise<void> {
+  const scenario = scenarioFromUrl();
   const world = await initPhysics();
 
   const app = document.getElementById('app')!;
@@ -45,7 +48,9 @@ async function main(): Promise<void> {
   sun.shadow.normalBias = 0.02;
   scene.add(sun);
 
-  const track = new Track(TRACKS[0]);
+  const trackDef = scenario ? TRACK_BY_NAME[scenario.track] : TRACKS[0];
+  if (!trackDef) throw new Error(`unknown track ${JSON.stringify(scenario?.track)}: ${Object.keys(TRACK_BY_NAME).join(', ')}`);
+  const track = new Track(trackDef);
   scene.add(track.createMesh());
   track.createCollider(world);
 
@@ -66,18 +71,32 @@ async function main(): Promise<void> {
   controls.target.set(0, 0, 0);
 
   const hud = new Hud();
-  const rules = { ...DEFAULT_RULES };
+  // A scenario runs turns in setup order so the human under test always flicks first.
+  const rules = { ...DEFAULT_RULES, ...(scenario ? { orderByPosition: false } : {}) };
   const timer = new THREE.Timer();
 
   let camAnim: { fromPos: THREE.Vector3; toPos: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; t: number } | null = null;
 
-  function frameCar(p: Player): void {
+  function cameraPose(p: Player, mode: CameraMode): { pos: THREE.Vector3; target: THREE.Vector3 } {
     const pos = p.car.position;
     const q = track.query(pos.x, pos.z);
     const tg = track.tangentAt(q.index);
-    const toTarget = pos.clone();
-    const toPos = pos.clone().addScaledVector(tg, -6.5).add(new THREE.Vector3(0, 4.2, 0));
-    camAnim = { fromPos: camera.position.clone(), toPos, fromTarget: controls.target.clone(), toTarget, t: 0 };
+    const target = pos.clone();
+    if (mode === 'top') return { pos: pos.clone().add(new THREE.Vector3(0, 14, 0.01)), target };
+    if (mode === 'side') return { pos: pos.clone().add(new THREE.Vector3(-tg.z, 0, tg.x).multiplyScalar(7)).add(new THREE.Vector3(0, 3, 0)), target };
+    return { pos: pos.clone().addScaledVector(tg, -6.5).add(new THREE.Vector3(0, 4.2, 0)), target };
+  }
+
+  function frameCar(p: Player): void {
+    const { pos, target } = cameraPose(p, scenario?.cam ?? 'chase');
+    if (scenario) {
+      // No glide in a scenario: the shot is ready as soon as the page is.
+      camAnim = null;
+      camera.position.copy(pos);
+      controls.target.copy(target);
+      return;
+    }
+    camAnim = { fromPos: camera.position.clone(), toPos: pos, fromTarget: controls.target.clone(), toTarget: target, t: 0 };
   }
 
   // The ring under the car marks a human player's turn for as long as it lasts. The finger drag is shown on each
@@ -100,7 +119,7 @@ async function main(): Promise<void> {
       endCue();
       if (p.ai) return;
       cue.show(p.color);
-      if (!tutored.has(p.id)) {
+      if (!scenario && !tutored.has(p.id)) {
         tutored.add(p.id);
         fingerAt = timer.getElapsed() + 1.1; // the camera glide takes 0.7 s
       }
@@ -113,9 +132,9 @@ async function main(): Promise<void> {
     raceOver: (placings) => {
       hud.showResults(placings, () => hud.showSetup(startRace));
     },
-  });
+  }, scenario?.seed);
 
-  function startRace(setups: { name: string; ai: boolean }[], laps: number): void {
+  function startRace(setups: PlayerSetup[], laps: number): void {
     rules.laps = laps;
     tutored.clear();
     endCue();
@@ -158,7 +177,13 @@ async function main(): Promise<void> {
   });
 
   hud.showPower(null);
-  hud.showSetup(startRace);
+  if (scenario) {
+    hud.hideSetup();
+    startRace(scenario.players, scenario.laps);
+    (window as unknown as { __neppis: NeppisDebug }).__neppis = debugHandle();
+  } else {
+    hud.showSetup(startRace);
+  }
 
   // Frame statistics overlay: add ?stats to the URL.
   const stats = new URLSearchParams(location.search).has('stats') ? document.createElement('div') : null;
@@ -169,6 +194,105 @@ async function main(): Promise<void> {
   }
   const acc = { frames: 0, physMs: 0, renderMs: 0, steps: 0, time: 0 };
 
+  function stepPhysics(): void {
+    world.step();
+    game.afterStep(PHYS_DT);
+    acc.steps++;
+  }
+
+  /** window.__neppis in scenario mode: read the game state and drive it synchronously from a test. */
+  function debugHandle(): NeppisDebug {
+    const deg = (r: number) => (r * 180) / Math.PI;
+    const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+    const tangentYaw = (x: number, z: number) => {
+      const tg = track.tangentAt(track.query(x, z).index);
+      return Math.atan2(-tg.z, tg.x);
+    };
+    const state = (): GameState => ({
+      phase: game.phase,
+      round: game.round,
+      current: game.current?.name ?? null,
+      flicksLeft: game.flicksLeft,
+      lastOutcome: game.lastOutcome,
+      cars: game.players.map((p) => {
+        const pos = p.car.position;
+        const q = track.query(pos.x, pos.z);
+        return {
+          name: p.name,
+          ai: p.ai,
+          x: pos.x,
+          z: pos.z,
+          yaw: wrap(deg(p.car.yaw)),
+          heading: wrap(deg(tangentYaw(pos.x, pos.z) - p.car.yaw)),
+          upDot: p.car.upDot,
+          onTrack: q.onTrack,
+          t: q.t,
+          lateral: q.d,
+          lap: p.lap,
+          progress: p.progress,
+        };
+      }),
+    });
+    const aimDir = (headingDeg: number) => {
+      const pos = game.current!.car.position;
+      const yaw = tangentYaw(pos.x, pos.z) - (headingDeg * Math.PI) / 180;
+      return { yaw, dir: { x: Math.cos(yaw), z: -Math.sin(yaw) } };
+    };
+    const aim = (headingDeg: number, power: number) => {
+      if (!game.current || game.phase !== 'aim') return state();
+      const { yaw, dir } = aimDir(headingDeg);
+      const pos = game.current.car.position;
+      endFinger();
+      game.rotateCurrent(yaw);
+      const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(0.6 + 3 * power));
+      indicator.show(pos, dir, from, power, true);
+      hud.showPower(power);
+      return state();
+    };
+    const step = (seconds: number) => {
+      const n = Math.round(seconds / PHYS_DT);
+      for (let i = 0; i < n; i++) stepPhysics();
+      for (const p of game.players) p.car.sync();
+      return state();
+    };
+    return {
+      state,
+      aim,
+      flick: (headingDeg, power) => {
+        if (!game.current || game.phase !== 'aim') return state();
+        aim(headingDeg, power);
+        const { dir } = aimDir(headingDeg);
+        indicator.hide();
+        hud.showPower(null);
+        game.flick(dir, power);
+        return state();
+      },
+      step,
+      settle: (maxSeconds = 12) => {
+        let t = 0;
+        while ((game.phase === 'flying' || game.phase === 'settle') && t < maxSeconds) {
+          stepPhysics();
+          t += PHYS_DT;
+        }
+        for (const p of game.players) p.car.sync();
+        return state();
+      },
+      carScreen: () => {
+        if (!game.current) return null;
+        const v = game.current.car.position.clone().project(camera);
+        return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
+      },
+      camera: (mode) => {
+        if (!game.current) return;
+        const { pos, target } = cameraPose(game.current, mode);
+        camAnim = null;
+        camera.position.copy(pos);
+        controls.target.copy(target);
+        controls.update();
+      },
+    };
+  }
+
   let accumulator = 0;
   renderer.setAnimationLoop(() => {
     timer.update();
@@ -176,10 +300,8 @@ async function main(): Promise<void> {
     accumulator = Math.min(accumulator + frameDt, MAX_STEPS_PER_FRAME * PHYS_DT);
     const tPhys = performance.now();
     while (accumulator >= PHYS_DT) {
-      world.step();
-      game.afterStep(PHYS_DT);
+      stepPhysics();
       accumulator -= PHYS_DT;
-      acc.steps++;
     }
     for (const p of game.players) p.car.sync();
     const tRender = performance.now();

@@ -168,3 +168,19 @@ aggression 0.85, aim noise 0.03 rad). The roster of distinct drivers is in `driv
 | `FLICK.grabRadius` / `grabRadiusPx` | 1.0 / 36 | where a drag may start, ground units / screen px |
 | `FLICK.maxTurnDeg` | 45 | planned: turn allowed per flick, degrees either way |
 | `WHEEL.rollingCoefficient` | 0.12 | rolling resistance, fraction of g |
+
+## 9. Scenarios: testing a situation
+
+`?scenario=<name>` (or `?car=t,lateral,heading`) loads the game straight into a known situation: a track
+by name, cars at poses given in track terms (lap fraction, offset from the centreline, heading relative
+to travel), a fixed random seed, no setup screen, no camera glide, no finger cue, and turns in setup
+order so the human under test always flicks first. `window.__neppis` then exposes the game state and
+lets a test aim, flick and step the physics synchronously until the car settles, so a check reads
+numbers instead of waiting on wall-clock time. `pnpm scenario` drives it from the terminal and
+`pnpm screenshot` accepts a scenario URL. The small loop in `src/tracks/test.ts` is the default
+track: a straight from the start line, a right-hand bend, then the jump and the dip on the back
+straight. Presets in `src/scenario.ts`: straight, ridge, bend, reversed, rival, jump.
+
+Outcomes measured in the browser should be confirmed in the Node tools before being relied on for
+AI tuning, and the other way round for input and camera behaviour: they share the track and physics
+code but not the render loop.

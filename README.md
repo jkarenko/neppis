@@ -11,6 +11,7 @@ pnpm dev        # http://localhost:5173
 pnpm build      # typecheck + production build to dist/
 pnpm calibrate  # headless: flick distance and flip rate per power level
 pnpm simrace    # headless: three AI drivers race one lap, exercises the rules engine
+pnpm scenario   # headless browser: load a known situation, flick, read the state (scripts/README.md)
 ```
 
 ## Controls

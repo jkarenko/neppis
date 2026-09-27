@@ -167,6 +167,9 @@ there is no desktop.
 
 ## 7. Build order
 
+0. Scenario mode and the test track (done 2026-09-27): `?scenario=` loads a known situation, the
+   debug handle drives it, `pnpm scenario` reports state and shots. Every later step is checked
+   through it.
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
    baseline.
 2. Boot/title screen with progress and the audio gate.

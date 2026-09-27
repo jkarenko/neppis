@@ -1,5 +1,5 @@
 // The flat oval every headless physics tool runs on. Keep it here so the tools stay in sync.
-import type { TrackDef } from '../../src/track.ts';
+import type { TrackDef } from '../track.ts';
 
 export const CAL_TRACK: TrackDef = {
   name: 'calibration',
