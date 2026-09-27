@@ -393,7 +393,7 @@ async function main(): Promise<void> {
     indicator.update(timer.getElapsed());
     if (cue.visible && game.current) {
       const pos = game.current.car.position;
-      cue.update(pos, timer.getElapsed());
+      cue.update(pos, timer.getElapsed(), game.heightAt);
       if (fingerAt !== null && timer.getElapsed() >= fingerAt) {
         const projected = pos.clone().project(camera);
         hud.showFinger({ x: ((projected.x + 1) / 2) * window.innerWidth, y: ((1 - projected.y) / 2) * window.innerHeight });

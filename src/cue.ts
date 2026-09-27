@@ -9,6 +9,59 @@ export type HeightAt = (x: number, z: number) => number;
 const WEDGE_RADIUS = 2.4;
 const WEDGE_RINGS = 12;
 const WEDGE_SEGMENTS = 48;
+const RING_INNER = 0.62;
+const RING_OUTER = 0.74;
+const GLOW_RADIUS = 0.9;
+const DISC_SEGMENTS = 48;
+
+/**
+ * A flat annulus (or disc, with inner 0) as rows of rings so that, like the wedge, every vertex can be lifted to
+ * the ground under it. The polar template is kept so the ring can be resized and re-laid each frame as it pulses.
+ */
+class Disc {
+  readonly geometry: THREE.BufferGeometry;
+  private readonly radius: Float32Array;
+  private readonly angle: Float32Array;
+
+  constructor(inner: number, outer: number, rows: number) {
+    const n = (rows + 1) * (DISC_SEGMENTS + 1);
+    this.radius = new Float32Array(n);
+    this.angle = new Float32Array(n);
+    let v = 0;
+    for (let r = 0; r <= rows; r++) {
+      for (let i = 0; i <= DISC_SEGMENTS; i++) {
+        this.radius[v] = inner + ((outer - inner) * r) / rows;
+        this.angle[v] = (2 * Math.PI * i) / DISC_SEGMENTS;
+        v++;
+      }
+    }
+    const idx: number[] = [];
+    const row = DISC_SEGMENTS + 1;
+    for (let r = 0; r < rows; r++) {
+      for (let i = 0; i < DISC_SEGMENTS; i++) {
+        const a = r * row + i;
+        idx.push(a, a + row, a + 1, a + 1, a + row, a + row + 1);
+      }
+    }
+    this.geometry = new THREE.BufferGeometry();
+    this.geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
+    this.geometry.setIndex(idx);
+    this.lay(0, 0, 1, () => 0);
+  }
+
+  /** Lay the disc around a point, scaled, each vertex a little above the ground under it. */
+  lay(cx: number, cz: number, scale: number, heightAt: HeightAt): void {
+    const pos = this.geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const r = this.radius[i] * scale;
+      const x = Math.cos(this.angle[i]) * r;
+      const z = -Math.sin(this.angle[i]) * r;
+      pos.setXYZ(i, x, heightAt(cx + x, cz + z) + 0.05, z);
+    }
+    pos.needsUpdate = true;
+    this.geometry.computeBoundingSphere();
+  }
+}
 
 /**
  * A 90° sector in front of the car: the headings a flick may take, each coloured by the most power it may have
@@ -46,13 +99,14 @@ function sector(halfAngle: number): THREE.BufferGeometry {
 }
 
 /**
- * Pulsing glowing ring under the car: the "this one is yours, drag from here" cue. While a drag is on, the ring gives
- * way to the turn wedge: the 90° sector of headings the flick may take, centred on the heading the car rests with.
+ * Pulsing glowing ring under the car: the "this one is yours, drag from here" cue. It lies on the ground like the
+ * wedge does, climbing the ridge and the jump. While a drag is on, the ring gives way to the turn wedge: the 90°
+ * sector of headings the flick may take, centred on the heading the car rests with.
  */
 export class TurnCue {
   readonly group: THREE.Group;
-  private readonly ring: THREE.Mesh;
-  private readonly glow: THREE.Mesh;
+  private readonly ring: Disc;
+  private readonly glow: Disc;
   private readonly ringMaterial: THREE.MeshBasicMaterial;
   private readonly glowMaterial: THREE.MeshBasicMaterial;
   private readonly wedge: THREE.Group;
@@ -75,10 +129,9 @@ export class TurnCue {
       polygonOffset: true,
       polygonOffsetFactor: -3,
     });
-    const ringGeo = new THREE.RingGeometry(0.62, 0.74, 48);
-    ringGeo.rotateX(-Math.PI / 2);
-    this.ring = new THREE.Mesh(ringGeo, this.ringMaterial);
-    this.ring.renderOrder = 9;
+    this.ring = new Disc(RING_INNER, RING_OUTER, 2);
+    const ring = new THREE.Mesh(this.ring.geometry, this.ringMaterial);
+    ring.renderOrder = 9;
 
     this.glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -89,12 +142,11 @@ export class TurnCue {
       polygonOffset: true,
       polygonOffsetFactor: -3,
     });
-    const glowGeo = new THREE.CircleGeometry(0.9, 48);
-    glowGeo.rotateX(-Math.PI / 2);
-    this.glow = new THREE.Mesh(glowGeo, this.glowMaterial);
-    this.glow.renderOrder = 8;
+    this.glow = new Disc(0, GLOW_RADIUS, 5);
+    const glow = new THREE.Mesh(this.glow.geometry, this.glowMaterial);
+    glow.renderOrder = 8;
 
-    this.group.add(this.glow, this.ring);
+    this.group.add(glow, ring);
     this.group.visible = false;
 
     const halfAngle = (FLICK.maxTurnDeg * Math.PI) / 180;
@@ -189,16 +241,16 @@ export class TurnCue {
     return this.active;
   }
 
-  /** Follow the car and pulse. */
-  update(car: THREE.Vector3, time: number): void {
+  /** Follow the car and pulse, laid on the ground under it; without a ground function it lies flat at the car's. */
+  update(car: THREE.Vector3, time: number, heightAt?: HeightAt): void {
     if (!this.active) return;
-    const groundY = car.y - CAR.restHeight + 0.05;
-    this.group.position.set(car.x, groundY, car.z);
+    const flat = car.y - CAR.restHeight;
+    this.group.position.set(car.x, heightAt ? 0 : flat, car.z);
+    const ground = heightAt ?? (() => 0);
     const pulse = 0.5 + 0.5 * Math.sin(time * 3.2);
-    const k = 1 + pulse * 0.14;
-    this.ring.scale.set(k, 1, k);
+    this.ring.lay(car.x, car.z, 1 + pulse * 0.14, ground);
     this.ringMaterial.opacity = 0.6 + pulse * 0.4;
-    this.glow.scale.set(1 + pulse * 0.25, 1, 1 + pulse * 0.25);
+    this.glow.lay(car.x, car.z, 1 + pulse * 0.25, ground);
     this.glowMaterial.opacity = 0.08 + pulse * 0.14;
   }
 }
