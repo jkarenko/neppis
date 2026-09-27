@@ -1,71 +1,94 @@
 // Driver portraits: flat vector faces drawn from a small feature set per driver (src/roster.ts), one style for the
 // whole ladder, legible at 32 px in the HUD and 96 px on a card. portrait(spec) returns inline SVG markup; the
 // circle behind it is the card's, in the driver's grid colour. A hand-drawn illustration can replace any face later.
+//
+// Geometry on a 64 grid: the head is centred at (32, 30) and spans x 18..46; the ears sit at (18, 31) and (46, 31)
+// with radius 3, so hair that must not cover them ends at y 28 on the sides and stays inside x 18..46.
 
 export interface PortraitSpec {
   /** Skin tone index into SKIN. */
   skin: number;
-  hair?: 'short' | 'side' | 'long' | 'bun' | 'ponytail' | 'tousled' | 'spiky' | 'bald';
+  hair?: 'short' | 'side' | 'long' | 'bun' | 'ponytail' | 'tousled' | 'spiky' | 'mohawk' | 'wavy' | 'curly';
   hairColor?: string;
-  hat?: 'cap' | 'helmet' | 'hood' | 'goggles';
+  hat?: 'cap' | 'helmet' | 'hood' | 'goggles' | 'headband' | 'hardhat';
   hatColor?: string;
-  /** Helmet stripe colour. */
+  /** Helmet or headband stripe colour. */
   stripe?: string;
-  eyes: 'open' | 'wide' | 'squint' | 'sleepy' | 'happy' | 'glasses' | 'shades';
+  eyes: 'open' | 'wide' | 'squint' | 'sleepy' | 'happy' | 'glasses' | 'shades' | 'side';
   mouth: 'smile' | 'grin' | 'biggrin' | 'teeth' | 'flat' | 'shout' | 'worried' | 'smirk' | 'none';
-  beard?: 'moustache' | 'stubble';
-  prop?: 'sweat' | 'flower' | 'plaster-brow' | 'plaster-cheek' | 'dent';
+  beard?: 'moustache' | 'stubble' | 'goatee';
+  prop?: 'sweat' | 'flower' | 'plaster-brow' | 'plaster-cheek' | 'shiner' | 'cup';
   /** Shirt colour, the one accent per driver. */
   accent: string;
   /** Thick neck and shoulders. */
   wide?: boolean;
   /** Square jaw. */
   square?: boolean;
+  /** A bathrobe instead of a shirt: lapels in a V. */
+  robe?: boolean;
   /** Drawn upside down (Callow Rollover). */
   flip?: boolean;
-  /** Not a person: a sand dune with a face (The Dune). */
-  dune?: boolean;
 }
 
 const SKIN = ['#f1c9a5', '#e0a87a', '#b97a56', '#6b3f22'];
 const INK = '#1d2430';
 
-// Face geometry on a 64 grid: the head is centred at (32, 30), the eyes sit on y 29, the mouth on y 40.
 const HEAD = 'M18 30c0-9 6-16 14-16s14 7 14 16c0 9-6 17-14 17S18 39 18 30z';
 const HEAD_SQUARE = 'M18 28c0-8 6-14 14-14s14 6 14 14v11c0 5-6 8-14 8s-14-3-14-8z';
 
-function shoulders(color: string, wide = false): string {
-  return wide
-    ? `<path d="M4 64c0-12 8-18 20-19h16c12 1 20 7 20 19z" fill="${color}"/><path d="M24 44h16v6H24z" fill="var(--skin)"/>`
-    : `<path d="M8 64c0-11 7-17 18-18h12c11 1 18 7 18 18z" fill="${color}"/><path d="M26 42h12v8H26z" fill="var(--skin)"/>`;
+function shoulders(spec: PortraitSpec): string {
+  const body = spec.wide
+    ? `<path d="M4 64c0-12 8-18 20-19h16c12 1 20 7 20 19z" fill="${spec.accent}"/><path d="M24 44h16v6H24z" fill="var(--skin)"/>`
+    : `<path d="M8 64c0-11 7-17 18-18h12c11 1 18 7 18 18z" fill="${spec.accent}"/><path d="M26 42h12v8H26z" fill="var(--skin)"/>`;
+  const robe = spec.robe ? `<path d="M19 64c2-10 4-15 7-20l6 12 6-12c3 5 5 10 7 20z" fill="#fff" opacity="0.28"/><path d="M26 44l6 12 6-12" fill="none" stroke="${INK}" stroke-width="1.2" opacity="0.35"/>` : '';
+  return body + robe;
 }
 
-const HAIR: Record<NonNullable<PortraitSpec['hair']>, string> = {
-  short: 'M17 30c0-11 6-17 15-17s15 6 15 17c-2-6-6-9-15-9s-13 3-15 9z',
+/** The short cap of hair on top of the head; long styles add their length behind the head separately. */
+const CAP = 'M17 30c0-11 6-17 15-17s15 6 15 17c-2-6-6-9-15-9s-13 3-15 9z';
+
+const HAIR_TOP: Record<NonNullable<PortraitSpec['hair']>, string> = {
+  short: CAP,
   side: 'M17 30c0-10 5-16 13-17 3 0 5 2 6 4-8 0-15 4-19 13z M42 20c2 2 4 5 4 9-1-3-2-5-4-7z',
-  long: 'M17 30c0-11 6-17 15-17s15 6 15 17v14c0 2-2 4-4 4l-1-16c-3-4-7-5-10-5s-7 1-10 5l-1 16c-2 0-4-2-4-4z',
-  bun: 'M17 30c0-11 6-17 15-17s15 6 15 17c-2-6-6-9-15-9s-13 3-15 9z M26 12a6 6 0 1 1 12 0 6 6 0 0 1-12 0z',
-  ponytail: 'M17 30c0-11 6-17 15-17s15 6 15 17c-2-6-6-9-15-9s-13 3-15 9z M44 24c5 2 8 8 7 20-2 0-4-1-5-3 1-7-1-12-4-15z',
-  tousled: 'M16 31c-1-6 1-11 4-13-1-3 2-5 4-4 1-3 5-4 8-2 3-2 7-1 8 2 3-1 6 1 5 4 3 2 5 7 4 13-3-6-7-9-14-9s-13 3-15 9z',
-  spiky: 'M16 30c-1-5 0-9 3-11l-3-6 6 3 2-6 4 4 4-5 4 5 4-4 2 6 6-3-3 6c3 2 4 6 3 11-3-6-7-9-15-9s-14 3-17 9z',
-  bald: 'M20 24c2-6 6-10 12-10s10 4 12 10c-3-3-7-4-12-4s-9 1-12 4z',
+  long: CAP,
+  bun: CAP + ' M26 12a6 6 0 1 1 12 0 6 6 0 0 1-12 0z',
+  ponytail: CAP,
+  tousled: 'M18 29c-1-6 1-11 4-13-1-3 2-5 4-4 1-3 5-4 7-2 3-2 6-1 7 2 3-1 6 1 5 4 2 2 4 7 1 13-3-6-7-9-14-9s-13 3-14 9z',
+  spiky: 'M18 30c-1-5 0-9 3-11l-3-6 6 3 2-6 4 4 4-5 4 5 4-4 2 6 2-3-3 6c3 2 4 6 3 11c-3-6-7-9-14-9s-11 3-14 9z',
+  mohawk: 'M28 17c0-9 2-13 4-13s4 4 4 13c-1-1-3-2-4-2s-3 1-4 2z',
+  wavy: 'M18 30c-2-8 1-14 5-16 2-2 6-3 9-3s7 1 9 3c4 2 7 8 5 16-3-6-7-9-14-9s-11 3-14 9z',
+  curly: 'M17 31c-3-4-3-9 0-12-1-5 3-9 7-8 1-4 6-5 8-2 3-3 8-1 8 3 4 0 7 4 5 8 3 3 3 8 0 11-3-6-7-9-14-9s-11 3-14 9z',
+};
+
+/** Hair that hangs behind the head, drawn before the head. */
+const HAIR_BEHIND: Partial<Record<NonNullable<PortraitSpec['hair']>, string>> = {
+  long: 'M17 28h30v16c0 2-2 4-4 4H21c-2 0-4-2-4-4z',
+  ponytail: 'M44 24c5 2 8 8 7 20-2 0-4-1-5-3 1-7-1-12-4-15z',
+  wavy: 'M15 26c-2 6-3 12-1 20 1 4 4 6 6 5 1-3 1-8 0-11 3 4 6 4 6 0h12c0 4 3 4 6 0-1 3-1 8 0 11 2 1 5-1 6-5 2-8 1-14-1-20z',
 };
 
 function hat(spec: PortraitSpec): string {
-  const c = spec.hatColor ?? '#1d2430';
+  const c = spec.hatColor ?? INK;
   switch (spec.hat) {
     case 'cap':
-      return `<path d="M17 28c0-10 6-16 15-16s15 6 15 16H17z" fill="${c}"/><path d="M14 28h36c0 1.5-1 2.5-2.5 2.5h-31C15 30.5 14 29.5 14 28z" fill="${c}"/><path d="M14 28h36c0 1.5-1 2.5-2.5 2.5h-31C15 30.5 14 29.5 14 28z" fill="${INK}" opacity="0.25"/>`;
+      // Crown over the hair, band and peak just above the brows; nothing reaches the eyes (y 29) or the ears.
+      return `<path d="M17 25c0-10 6-16 15-16s15 6 15 16H17z" fill="${c}"/><path d="M14 25h36c0 1.5-1 2.5-2.5 2.5h-31C15 27.5 14 26.5 14 25z" fill="${c}"/><path d="M14 25h36c0 1.5-1 2.5-2.5 2.5h-31C15 27.5 14 26.5 14 25z" fill="${INK}" opacity="0.25"/>`;
     case 'helmet': {
       const stripe = spec.stripe ? `<path d="M29 12h6v14h-6z" fill="${spec.stripe}"/>` : '';
-      const dent = spec.prop === 'dent' ? `<path d="M40 14c-2 3-1 6 2 7 1-3 0-6-2-7z" fill="${INK}" opacity="0.35"/>` : '';
-      // Open-face helmet: shell over the head, the face shows through the opening.
-      return `<path d="M15 32c0-13 7-21 17-21s17 8 17 21v10c0 2-1 3-3 3h-3V32c0-5-4-7-11-7s-11 2-11 7v13h-3c-2 0-3-1-3-3z" fill="${c}"/>${stripe}${dent}<path d="M21 45V32c0-5 4-7 11-7s11 2 11 7v13" fill="none" stroke="${INK}" stroke-width="2" opacity="0.45"/><path d="M14 24c5-3 12-4 18-4s13 1 18 4c-5-1-12-2-18-2s-13 1-18 2z" fill="${INK}" opacity="0.35"/>`;
+      return `<path d="M15 32c0-13 7-21 17-21s17 8 17 21v10c0 2-1 3-3 3h-3V32c0-5-4-7-11-7s-11 2-11 7v13h-3c-2 0-3-1-3-3z" fill="${c}"/>${stripe}<path d="M21 45V32c0-5 4-7 11-7s11 2 11 7v13" fill="none" stroke="${INK}" stroke-width="2" opacity="0.45"/><path d="M14 24c5-3 12-4 18-4s13 1 18 4c-5-1-12-2-18-2s-13 1-18 2z" fill="${INK}" opacity="0.35"/>`;
     }
     case 'hood':
       return `<path d="M14 64c0-8 1-14 4-18-2-4-3-9-3-14 0-12 8-20 17-20s17 8 17 20c0 5-1 10-3 14 3 4 4 10 4 18z" fill="${c}"/><path d="M22 30c0-7 4-12 10-12s10 5 10 12c0 8-4 15-10 15s-10-7-10-15z" fill="${INK}" opacity="0.7"/><circle cx="26" cy="30" r="2" fill="#fff"/><circle cx="38" cy="30" r="2" fill="#fff"/>`;
     case 'goggles':
-      return `<path d="M17 21h30v6H17z" fill="${INK}"/><rect x="19" y="19" width="11" height="9" rx="3" fill="#8ecae6" stroke="${INK}" stroke-width="2"/><rect x="34" y="19" width="11" height="9" rx="3" fill="#8ecae6" stroke="${INK}" stroke-width="2"/>`;
+      // Over the eyes: big pupils behind translucent lenses, so the glass seems to magnify.
+      return `<circle cx="26" cy="29" r="3.4" fill="${INK}"/><circle cx="38" cy="29" r="3.4" fill="${INK}"/><path d="M15 27h34v4H15z" fill="${INK}"/><rect x="18" y="22" width="12" height="14" rx="4" fill="#8ecae6" opacity="0.45" stroke="${INK}" stroke-width="2"/><rect x="34" y="22" width="12" height="14" rx="4" fill="#8ecae6" opacity="0.45" stroke="${INK}" stroke-width="2"/>`;
+    case 'hardhat':
+      // A construction hard hat: domed shell with a ridge, a brim all round, sitting above the brows.
+      return `<path d="M17 24c0-11 6-16 15-16s15 5 15 16z" fill="${c}"/><path d="M29 9h6v14h-6z" fill="${INK}" opacity="0.15"/><path d="M13 24h38c0 2-1.5 3-3.5 3h-31C14.5 27 13 26 13 24z" fill="${c}"/><path d="M13 24h38c0 2-1.5 3-3.5 3h-31C14.5 27 13 26 13 24z" fill="${INK}" opacity="0.2"/>`;
+    case 'headband': {
+      const stripe = spec.stripe ? `<path d="M17 22c3-2 9-3 15-3s12 1 15 3v2c-3-2-9-3-15-3s-12 1-15 3z" fill="${spec.stripe}"/>` : '';
+      return `<path d="M17 24c0-3 7-6 15-6s15 3 15 6v3c-3-3-9-4-15-4s-12 1-15 4z" fill="${c}"/>${stripe}`;
+    }
     default:
       return '';
   }
@@ -88,6 +111,9 @@ function eyes(kind: PortraitSpec['eyes']): string {
       return `${open(1.6)}<circle cx="26" cy="29" r="5" fill="none" stroke="${INK}" stroke-width="1.8"/><circle cx="38" cy="29" r="5" fill="none" stroke="${INK}" stroke-width="1.8"/><path d="M31 29h2M17 27l4 1M47 27l-4 1" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`;
     case 'shades':
       return `<path d="M19 25h26v2c0 4-2 6-6 6s-6-2-7-5c-1 3-3 5-7 5s-6-2-6-6z" fill="${INK}"/>`;
+    case 'side':
+      // Half-lidded, pupils to one side: listening to somebody else talk.
+      return `<circle cx="28" cy="30" r="1.9" fill="${INK}"/><circle cx="40" cy="30" r="1.9" fill="${INK}"/><path d="M22 27.5h9M34 27.5h9" stroke="var(--skin)" stroke-width="3"/><path d="M22 27.5c2 0 6 0 8 0M34 27.5c2 0 6 0 8 0" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
   }
 }
 
@@ -104,7 +130,8 @@ function mouth(kind: PortraitSpec['mouth']): string {
     case 'flat':
       return `<path d="M27 40h10" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`;
     case 'shout':
-      return `<ellipse cx="32" cy="41" rx="5" ry="4.5" fill="${INK}"/><path d="M28 39h8" stroke="#fff" stroke-width="1.6"/>`;
+      // A filled mouth, upper teeth against its top edge, lower teeth at the bottom, then the outline.
+      return `<circle cx="32" cy="41" r="5.5" fill="${INK}"/><path d="M27.5 37.2c1-1.2 2.5-1.7 4.5-1.7s3.5.5 4.5 1.7v2.3h-9z" fill="#fff"/><path d="M28.5 45.5c1 .8 2.2 1.2 3.5 1.2s2.5-.4 3.5-1.2v-1.8h-7z" fill="#fff"/><circle cx="32" cy="41" r="5.5" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
     case 'worried':
       return `<path d="M26 41c2-2 4-2 6 0s4 2 6 0" stroke="${INK}" stroke-width="2.2" stroke-linecap="round" fill="none"/>`;
     case 'smirk':
@@ -114,12 +141,15 @@ function mouth(kind: PortraitSpec['mouth']): string {
   }
 }
 
-function beard(kind: PortraitSpec['beard']): string {
-  switch (kind) {
+function beard(spec: PortraitSpec): string {
+  const c = spec.hairColor ?? INK;
+  switch (spec.beard) {
     case 'moustache':
       return `<path d="M22 36c3-3 7-3 10-1 3-2 7-2 10 1-2 3-6 4-10 2-4 2-8 1-10-2z" fill="${INK}"/>`;
     case 'stubble':
       return `<path d="M20 34c2 8 6 12 12 12s10-4 12-12c-2 6-6 9-12 9s-10-3-12-9z" fill="${INK}" opacity="0.3"/>`;
+    case 'goatee':
+      return `<path d="M26 37c2-1.5 4-2 6-2s4 .5 6 2c-1 1-3 1.5-6 1.5s-5-.5-6-1.5z" fill="${c}"/><path d="M27 43c1 3 3 4.5 5 4.5s4-1.5 5-4.5c-1 1-3 1.6-5 1.6s-4-.6-5-1.6z" fill="${c}"/>`;
     default:
       return '';
   }
@@ -135,31 +165,27 @@ function prop(kind: PortraitSpec['prop']): string {
       return `<g transform="translate(40 20) rotate(-25)"><rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#f4dfc8"/><rect x="-2" y="-1.5" width="4" height="3" fill="#dcbfa5"/></g>`;
     case 'plaster-cheek':
       return `<g transform="translate(41 36) rotate(30)"><rect x="-6" y="-2.5" width="12" height="5" rx="1.5" fill="#f4dfc8"/><rect x="-2" y="-1.5" width="4" height="3" fill="#dcbfa5"/></g>`;
+    case 'shiner':
+      return `<circle cx="38" cy="29" r="5.2" fill="#5b3a8a" opacity="0.45"/>`;
+    case 'cup':
+      // A cup held up at chest height, spoon in it, mid-stir.
+      return `<rect x="41" y="45" width="13" height="11" rx="2.5" fill="#f4f1ea"/><path d="M54 47.5a3.5 3.5 0 0 1 0 7" fill="none" stroke="#f4f1ea" stroke-width="2"/><path d="M45 47c1-1 3-2 5-2s4 1 5 2" fill="none" stroke="#b08968" stroke-width="2"/><path d="M50 46l4-9" stroke="#cfd3d6" stroke-width="2" stroke-linecap="round"/><ellipse cx="54.5" cy="36.5" rx="1.8" ry="1.2" fill="#cfd3d6"/>`;
     default:
       return '';
   }
 }
 
-/** A dune with a face: two squinting eyes and a flat mouth in the sand, no body. */
-function dune(spec: PortraitSpec): string {
-  return `<path d="M2 62c8-30 20-46 34-46 10 0 18 8 26 22-6-3-11-4-16-2 6 6 10 14 12 26z" fill="${spec.accent}"/><path d="M2 62c8-30 20-46 34-46-6 10-10 24-10 46z" fill="${INK}" opacity="0.12"/><g transform="translate(6 12)">${eyes(spec.eyes)}${mouth(spec.mouth)}</g>`;
-}
-
 /** Inline SVG for a driver's face, sized by CSS. */
 export function portrait(spec: PortraitSpec, cls = 'face'): string {
   const skin = SKIN[spec.skin] ?? SKIN[0];
-  let body: string;
-  if (spec.dune) {
-    body = dune(spec);
-  } else {
-    const head = `<path d="${spec.square ? HEAD_SQUARE : HEAD}" fill="var(--skin)"/><circle cx="18" cy="31" r="3" fill="var(--skin)"/><circle cx="46" cy="31" r="3" fill="var(--skin)"/>`;
-    const hairPath = spec.hair && spec.hat !== 'helmet' && spec.hat !== 'hood' ? `<path d="${HAIR[spec.hair]}" fill="${spec.hairColor ?? INK}"/>` : '';
-    const nose = `<path d="M32 30v5" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>`;
-    // Order: shoulders, hair behind the head (long/ponytail), head, features, hair on top, hat, props.
-    const behind = spec.hair === 'long' || spec.hair === 'ponytail' ? hairPath : '';
-    const onTop = behind ? '' : hairPath;
-    body = `${shoulders(spec.accent, spec.wide)}${behind}${head}${eyes(spec.eyes)}${nose}${mouth(spec.mouth)}${beard(spec.beard)}${onTop}${hat(spec)}${prop(spec.prop)}`;
-  }
+  const hairColor = spec.hairColor ?? INK;
+  const head = `<path d="${spec.square ? HEAD_SQUARE : HEAD}" fill="var(--skin)"/><circle cx="18" cy="31" r="3" fill="var(--skin)"/><circle cx="46" cy="31" r="3" fill="var(--skin)"/>`;
+  const covered = spec.hat === 'helmet' || spec.hat === 'hood';
+  const behind = spec.hair && !covered && HAIR_BEHIND[spec.hair] ? `<path d="${HAIR_BEHIND[spec.hair]}" fill="${hairColor}"/>` : '';
+  const top = spec.hair && !covered ? `<path d="${HAIR_TOP[spec.hair]}" fill="${hairColor}"/>` : '';
+  const nose = `<path d="M32 30v5" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>`;
+  // Order: shoulders, hair behind the head, head, features, hair on top, hat, props.
+  const body = `${shoulders(spec)}${behind}${head}${eyes(spec.eyes)}${nose}${mouth(spec.mouth)}${beard(spec)}${top}${hat(spec)}${prop(spec.prop)}`;
   const transform = spec.flip ? ' transform="rotate(180 32 32)"' : '';
   return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true" style="--skin:${skin}"><g${transform}>${body}</g></svg>`;
 }

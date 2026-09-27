@@ -74,6 +74,19 @@ export function clampTurn(yaw: number, ref: number, maxTurn = MAX_TURN): number 
   return ref + Math.max(-maxTurn, Math.min(maxTurn, d));
 }
 
+/**
+ * The most power a flick may have when the nose is turned `turn` radians from the rest heading: 1 straight ahead,
+ * a sigmoid drop through the middle of the wedge, FLICK.turnPower.edgePower at its edge. Normalised so the centre is
+ * exactly 1 and the edge exactly edgePower.
+ */
+export function maxPowerForTurn(turn: number): number {
+  const { halfDeg, widthDeg, edgePower } = FLICK.turnPower;
+  const deg = Math.min(FLICK.maxTurnDeg, (Math.abs(turn) * 180) / Math.PI);
+  const sig = (d: number) => 1 / (1 + Math.exp((d - halfDeg) / widthDeg));
+  const k = (sig(deg) - sig(FLICK.maxTurnDeg)) / (sig(0) - sig(FLICK.maxTurnDeg));
+  return edgePower + (1 - edgePower) * k;
+}
+
 /** How far a straight line from (x, z) along dir stays at least `margin` inside the track edge, up to max. */
 export function clearDistance(track: Track, x: number, z: number, dir: { x: number; z: number }, max: number, margin = 0): number {
   const step = 0.25;
@@ -209,6 +222,8 @@ function aimAt(
     const clear = clearDistance(track, x, z, { x: Math.cos(yaw), z: -Math.sin(yaw) }, desired);
     power = Math.min(power, powerForDistance(Math.max(1.0, clear - 0.3)));
   }
+  // A sharp turn cannot be taken at speed: the same cap the game puts on a human's flick.
+  power = Math.min(power, maxPowerForTurn(wrapAngle(yaw - restYaw)));
   yaw += rng.gauss() * p.aimNoise;
   power = Math.min(p.maxPower, power + rng.gauss() * p.powerNoise);
   return { yaw, dir: { x: Math.cos(yaw), z: -Math.sin(yaw) }, power: Math.max(0.08, power), clamped, kind };

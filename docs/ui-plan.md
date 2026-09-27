@@ -211,8 +211,11 @@ Design reading for step 7 (2026-09-27, before building):
   reports the kind with the message; the text stays English and short. One slot, the newest
   replaces the previous; 2.6 s, 4 s for a finish.
 - **Where the car may go** is the turn wedge: while a drag is on, a 90° sector on the ground in
-  front of the car in the driver's colour (faint fill, brighter rim), centred on the heading it
-  rests with, so the 45° limit is visible where the finger is looking. The ribbon keeps showing
+  front of the car, centred on the heading it rests with, so the limit is visible where the
+  finger is looking. Its fill is the max-power gradient of the turn rule (gameplay.md section
+  3, added in the review round of 2026-09-27): red straight ahead through yellow and green to
+  blue at the edges, the ribbon's own scale, so the wedge says which colour each angle can
+  give; the rim is in the driver's colour. The ribbon keeps showing
   the line the car will actually take, and when the finger is past the edge the wedge brightens
   and its rim goes white: "you are asking for more than the car will give". The brief's idea of
   reddening the ribbon was dropped in the build: red on the ribbon already means risky power,

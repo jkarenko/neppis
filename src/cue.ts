@@ -1,17 +1,32 @@
 import * as THREE from 'three';
 import { CAR, FLICK } from './config.ts';
+import { maxPowerForTurn } from './ai.ts';
+import { powerColor } from './indicator.ts';
 
-/** A 90° sector on the ground in front of the car: the headings a flick may take. */
-function sector(radius: number, halfAngle: number, segments = 24): THREE.BufferGeometry {
+/**
+ * A 90° sector on the ground in front of the car: the headings a flick may take, each coloured by the most power it
+ * may have there (the ribbon's own scale: red straight ahead, blue at the edges). The centre vertex takes the
+ * straight-ahead colour, the rim vertices their angle's colour; the fan triangles blend between them.
+ */
+function sector(radius: number, halfAngle: number, segments = 48): THREE.BufferGeometry {
   const pts = [0, 0, 0];
+  const cols: number[] = [];
+  const c = new THREE.Color();
+  const push = (angle: number) => {
+    powerColor(maxPowerForTurn(angle), c);
+    cols.push(c.r, c.g, c.b);
+  };
+  push(0);
   for (let i = 0; i <= segments; i++) {
     const a = -halfAngle + (2 * halfAngle * i) / segments;
     pts.push(Math.cos(a) * radius, 0, -Math.sin(a) * radius);
+    push(a);
   }
   const idx: number[] = [];
   for (let i = 1; i <= segments; i++) idx.push(0, i + 1, i);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
@@ -66,7 +81,7 @@ export class TurnCue {
     this.group.visible = false;
 
     const halfAngle = (FLICK.maxTurnDeg * Math.PI) / 180;
-    this.wedgeFill = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide });
+    this.wedgeFill = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide });
     const fill = new THREE.Mesh(sector(2.4, halfAngle), this.wedgeFill);
     fill.renderOrder = 7;
     this.wedgeRim = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
@@ -84,13 +99,12 @@ export class TurnCue {
   }
 
   /**
-   * Show the wedge in the driver's colour, its centre line along `yaw`, at the car. `pushing` means the finger asks
-   * for more turn than the wedge gives: the fill brightens and the rim goes white, a change that reads in every car
-   * colour (red would clash with the ribbon's own "risky" red).
+   * Show the wedge, its centre line along `yaw`, at the car. The fill is the power gradient; the rim is in the
+   * driver's colour. `pushing` means the finger asks for more turn than the wedge gives: the fill brightens and the
+   * rim goes white, a change that reads in every car colour.
    */
   showWedge(color: number, car: THREE.Vector3, yaw: number, pushing = false): void {
-    this.wedgeFill.color.set(color);
-    this.wedgeFill.opacity = pushing ? 0.34 : 0.16;
+    this.wedgeFill.opacity = pushing ? 0.5 : 0.3;
     this.wedgeRim.color.set(pushing ? 0xffffff : color);
     this.wedgeRim.opacity = pushing ? 1 : 0.85;
     this.wedge.position.set(car.x, car.y - CAR.restHeight + 0.045, car.z);

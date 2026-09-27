@@ -44,6 +44,12 @@ export const FLICK = {
   speedExp: 0.5,
   /** A flick may turn the nose at most this far either way from the heading the car came to rest with. */
   maxTurnDeg: 45,
+  /**
+   * Max power falls with the turn angle, as a sharp turn cannot be taken at speed: full power inside a narrow centre
+   * band, then a sigmoid drop centred at `halfDeg` (where half the range is gone) with width `widthDeg`, down to
+   * `edgePower` at the wedge edge. See maxPowerForTurn in ai.ts.
+   */
+  turnPower: { halfDeg: 22, widthDeg: 5, edgePower: 0.35 },
 };
 
 export const WHEEL = {

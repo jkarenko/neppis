@@ -4,7 +4,7 @@ import { Car } from './car.ts';
 import type { Track, TrackQuery } from './track.ts';
 import { PHYS_DT, PLAYER_COLORS, type Rules } from './config.ts';
 import { Rng } from './rng.ts';
-import { clampTurn, planFlick, type AiProfile, type Plan, type RaceContext } from './ai.ts';
+import { clampTurn, maxPowerForTurn, planFlick, wrapAngle, type AiProfile, type Plan, type RaceContext } from './ai.ts';
 
 /** Where to put a car instead of its grid slot, in track terms so scenarios survive track edits. */
 export interface TrackPose {
@@ -232,10 +232,17 @@ export class Game {
     return clampTurn(yaw, this.restYaw);
   }
 
+  /** The most power the current car may flick with at the nose heading it is previewing (or resting with). */
+  maxPowerNow(yaw = this.current?.car.yaw ?? this.restYaw): number {
+    return maxPowerForTurn(wrapAngle(yaw - this.restYaw));
+  }
+
   flick(_dir: { x: number; z: number }, power: number): void {
     if (this.phase !== 'aim' || !this.current) return;
     const car = this.current.car;
     car.commitPreview();
+    // A sharp turn cannot be taken at speed: the power is capped by how far the nose was turned for this flick.
+    power = Math.min(power, this.maxPowerNow(car.yaw));
     this.flickStart = this.poseOf(car);
     const q = this.track.query(this.flickStart.x, this.flickStart.z);
     this.startedOffTrack = !q.onTrack;

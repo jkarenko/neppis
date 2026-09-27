@@ -103,14 +103,14 @@
           <section class="howto-page">
             <div class="howto-art">
               <svg viewBox="0 0 200 120" aria-hidden="true">
-                <ellipse cx="60" cy="56" rx="26" ry="26" fill="#ffffff" opacity="0.18"/>
-                <ellipse cx="60" cy="56" rx="22" ry="22" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
-                <g transform="translate(60 56) rotate(-10)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="#e63946"/><rect x="-12" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="-12" y="8" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="8" width="7" height="3" fill="#1c1c1c"/><circle cx="2" cy="0" r="3" fill="#f1f1f1"/></g>
-                <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(60 56) rotate(-10)">
-                  <path d="M-30 -5 L-24 0 L-30 5" stroke="#22c55e"/><path d="M-42 -5 L-36 0 L-42 5" stroke="#22c55e"/><path d="M-54 -5 L-48 0 L-54 5" stroke="#eab308"/><path d="M-66 -5 L-60 0 L-66 5" stroke="#eab308"/><path d="M-78 -5 L-72 0 L-78 5" stroke="#ef4444"/>
+                <ellipse cx="52" cy="58" rx="24" ry="24" fill="#ffffff" opacity="0.18"/>
+                <ellipse cx="52" cy="58" rx="20" ry="20" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+                <g transform="translate(52 58) rotate(20)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="#e63946"/><rect x="-12" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="-12" y="8" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="8" width="7" height="3" fill="#1c1c1c"/><circle cx="2" cy="0" r="3" fill="#f1f1f1"/></g>
+                <!-- The ribbon runs along the drag, from the finger to the back of the car, chevrons pointing at the car. -->
+                <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(52 58) rotate(20)">
+                  <path d="M34 -5 L28 0 L34 5" stroke="#3b82f6"/><path d="M46 -5 L40 0 L46 5" stroke="#22c55e"/><path d="M58 -5 L52 0 L58 5" stroke="#22c55e"/><path d="M70 -5 L64 0 L70 5" stroke="#eab308"/><path d="M82 -5 L76 0 L82 5" stroke="#ef4444"/>
                 </g>
-                <path transform="translate(150 70) scale(1.1)" d="M-6 6 V-12 a4 4 0 0 1 8 0 v14 l2-1 a3.5 3.5 0 0 1 5 2 l1.5-0.5 a3.5 3.5 0 0 1 5 2.5 l1.5-0.3 a3 3 0 0 1 3.5 3 v9 c0 6-4 11-11 11 h-5 c-4 0-7-2-9-5 l-7-10 a3.5 3.5 0 0 1 5.5-4.5 z" fill="#fff" stroke="#1d2430" stroke-width="2.2" stroke-linejoin="round"/>
-                <path d="M100 62 L134 68" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 5" opacity="0.7"/>
+                <path transform="translate(146 92) scale(1.1)" d="M-6 6 V-12 a4 4 0 0 1 8 0 v14 l2-1 a3.5 3.5 0 0 1 5 2 l1.5-0.5 a3.5 3.5 0 0 1 5 2.5 l1.5-0.3 a3 3 0 0 1 3.5 3 v9 c0 6-4 11-11 11 h-5 c-4 0-7-2-9-5 l-7-10 a3.5 3.5 0 0 1 5.5-4.5 z" fill="#fff" stroke="#1d2430" stroke-width="2.2" stroke-linejoin="round"/>
               </svg>
             </div>
             <h3>Drag back, let go</h3>
@@ -119,16 +119,17 @@
           <section class="howto-page">
             <div class="howto-art">
               <svg viewBox="0 0 200 120" aria-hidden="true">
-                <path d="M60 60 L172 20 A118 118 0 0 1 172 100 Z" fill="#2a6fdb" opacity="0.22"/>
+                <defs>
+                  <linearGradient id="howtoWedge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="0.3" stop-color="#22c55e"/><stop offset="0.44" stop-color="#eab308"/><stop offset="0.5" stop-color="#ef4444"/><stop offset="0.56" stop-color="#eab308"/><stop offset="0.7" stop-color="#22c55e"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>
+                </defs>
+                <path d="M60 60 L172 20 A118 118 0 0 1 172 100 Z" fill="url(#howtoWedge)" opacity="0.45"/>
                 <path d="M172 20 L60 60 L172 100" fill="none" stroke="#2a6fdb" stroke-width="2.5" stroke-linejoin="round"/>
-                <path d="M60 60 L180 60" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 5" opacity="0.6"/>
                 <g transform="translate(60 60)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="#2a6fdb"/><rect x="-12" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="-12" y="8" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="8" width="7" height="3" fill="#1c1c1c"/><circle cx="2" cy="0" r="3" fill="#f1f1f1"/></g>
                 <g transform="translate(14 96)" fill="none" stroke="#2a6fdb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0 L5 6 L10 0"/><path d="M16 0 L21 6 L26 0"/><path d="M32 0 L37 6 L42 0" opacity="0.35"/></g>
-                <text x="150" y="112" fill="#cfc9bd" font-size="11" text-anchor="middle">45° each way</text>
               </svg>
             </div>
             <h3>Three flicks a turn</h3>
-            <p>Each turn is three flicks, the leader first. A flick can turn the nose at most 45° either way, so end a flick pointing where the next one should go.</p>
+            <p>Each turn is three flicks, the leader first. The nose only turns so far per flick, and the sharper the turn the gentler the flick, so end each one pointing where the next should go.</p>
           </section>
           <section class="howto-page">
             <div class="howto-art howto-list">

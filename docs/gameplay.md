@@ -73,8 +73,20 @@ facing backwards could simply be aimed forwards again.
   knocked sideways by a rival has been genuinely hurt.
 - **Aiming under the limit.** The drag still sets the direction, but the nose stops at the edge
   of the wedge and the flick goes along the nose. The ribbon shows the direction the car will
-  actually take, not the finger's. A 90° wedge on the ground in front of the car, drawn from
-  the existing turn cue, shows what is allowed; the ribbon reddens at the edge of it.
+  actually take, not the finger's. A 90° wedge on the ground in front of the car shows what is
+  allowed and, by its colour, how hard the flick may be at each angle (next point); its rim
+  goes white while the finger asks for more turn than it gives.
+- **The sharper the turn, the gentler the flick** (user's design, 2026-09-27 evening): a car
+  cannot take a sharp turn at speed, so the most power a flick may have falls with the turn
+  angle. Full power inside a narrow centre band, then a sigmoid drop, down to a mild flick at
+  the edge of the wedge: `FLICK.turnPower` in `src/config.ts` (half the range gone at 22°,
+  width 5°, 0.35 at the edge), `maxPowerForTurn` in `src/ai.ts`. Measured at 0°, 8°, 16°, 22°,
+  30° and 45°: 1.00, 0.97, 0.85, 0.68, 0.46, 0.35. The drag is capped at that power, so the
+  ribbon and the triangle show the colour the flick will actually get (a hard drag at a sharp
+  angle reads green or blue, never red); the wedge on the ground is filled with the same colour
+  scale, red straight ahead through yellow and green to blue at the edges, so it tells the
+  player before they drag what each angle can give. The AI plans under the same cap. The ladder
+  baseline in `drivers.md` predates this rule.
 - **Penalty placements** keep their heading rules: back to the flick start means the heading
   the flick was aimed at, back to the last on-track point means the direction of travel at that
   point, and the tip midpoint means the direction of travel there. So a car returned after
