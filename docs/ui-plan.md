@@ -72,8 +72,10 @@ Two sections, then a footer with laps and Start.
   game draws the AI grid from a window of the ladder around that tier, always including one
   driver from the tier above so there is someone to beat. Hand-picking stays available for
   hot-seat groups who want a specific villain.
-- **Footer.** Laps stepper (− 1 +, buttons 44 px), track chip (one track today, ready for more),
-  Start button, 56 px, filled.
+- **Side column, not a footer.** Add player and the laps stepper (− 1 +, buttons 44 px) sit
+  beside the racer list so they never move when a row is added; track chip (one track today,
+  ready for more) with them. Start button below, 56 px, filled. Humans default to Player 1,
+  Player 2, ...; an added AI is drawn at random from the drivers not yet on the grid.
 - Tablet/desktop: players left, opponents right in a 2-column grid. Phone: single column,
   opponents strip scrolls sideways.
 
@@ -83,8 +85,9 @@ Two sections, then a footer with laps and Start.
   ladder before you take it on.
 
 ### Race HUD (existing, adjusted)
-- Standings top-left, turn chevrons top-centre with the driver's name added (colour alone fails
-  red/green players), power readout top-right.
+- Standings top-left (names only, no AI tag), turn chevrons top-centre with the driver's name
+  added (colour alone fails red/green players). No power readout: the ribbon colour carries it,
+  and redundant information does not get a second element.
 - Messages: one toast slot under the chevrons, icon + text. Flipped, tipped and off-track get
   their own icons so they are recognisable without reading.
 - Turn wedge: with the 45° turn limit (`gameplay.md` section 3) a 90° wedge is drawn on the
@@ -172,7 +175,7 @@ there is no desktop.
    through it.
 0b. Turn wedge and mesh-only aim preview (done 2026-09-27), see `gameplay.md` section 3. The
    wedge drawn on the ground is still to do, in step 7.
-Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31.
+Timing log, wall clock including review and breaks, 2026-09-27: step 2 started 13:26; its code took 7m 43s, the rest was ladder tuning runs at about 7 minutes per 14-heat run; committed 13:58; the 28-heat baseline for the drivers doc landed 14:12. Step 3 (tokens, components, icons, kit page) 14:14 to 14:31. First gallery review round (three issues: ridge turning, icons and HUD redundancy, setup form) 14:38 to 15:05.
 
 1. Tokens and the glass component styles; kit page skeleton. Screenshot contact sheet as the
    baseline. Done 2026-09-27: tokens in `src/style.css`, components (.btn, .chip, .toast, .row,

@@ -12,6 +12,8 @@ export const TRACK_DETAIL = {
   fineCell: 0.125,
   /** Multiplier on the millimetre texture of the damp floor; 0 is glass-smooth. */
   fineTexture: 1,
+  /** Height of the pushed-up sand ridge along the track edge, world units. The wheel radius is 0.12. */
+  ridgeHeight: 0.12,
 };
 
 export const CAR = {

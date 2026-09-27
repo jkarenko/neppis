@@ -1,6 +1,6 @@
 import type { Game, Player, PlayerSetup } from './game.ts';
 import { PLAYER_COLORS } from './config.ts';
-import { DEFAULT_GRID, DRIVER_BY_ID, driverByName } from './roster.ts';
+import { DEFAULT_GRID, DRIVER_BY_ID, ROSTER, driverByName } from './roster.ts';
 import { icon } from './icons.ts';
 
 // Interim: until the setup screen from docs/ui-plan.md exists, AI rows get roster drivers by name, and a typed
@@ -16,7 +16,6 @@ export class Hud {
   private readonly turn = document.getElementById('turn')!;
   private readonly finger = document.getElementById('finger')!;
   private readonly message = document.getElementById('message')!;
-  private readonly power = document.getElementById('power')!;
   private readonly setup = document.getElementById('setup')!;
   private readonly rows = document.getElementById('playerRows')!;
   private readonly results = document.getElementById('results')!;
@@ -27,13 +26,21 @@ export class Hud {
     const add = document.getElementById('addPlayer') as HTMLButtonElement;
     const lapsInput = document.getElementById('laps') as HTMLInputElement;
     if (this.rows.childElementCount === 0) {
-      this.addRow('You', false);
+      this.addRow('Player 1', false);
       this.addRow(AI_NAMES[0], true);
     }
     add.onclick = () => {
       if (this.rows.childElementCount >= 6) return;
-      this.addRow(AI_NAMES[this.rows.childElementCount - 1] ?? 'Player', true);
+      this.addRow(this.freeDriverName(), true);
     };
+    const lapsValue = document.getElementById('lapsValue')!;
+    const setLaps = (n: number) => {
+      lapsInput.value = String(Math.max(1, Math.min(5, n)));
+      lapsValue.textContent = lapsInput.value;
+    };
+    (document.getElementById('lapsMinus') as HTMLButtonElement).onclick = () => setLaps(Number(lapsInput.value) - 1);
+    (document.getElementById('lapsPlus') as HTMLButtonElement).onclick = () => setLaps(Number(lapsInput.value) + 1);
+    setLaps(Number(lapsInput.value) || 1);
     form.onsubmit = (e) => {
       e.preventDefault();
       const setups: PlayerSetup[] = [];
@@ -48,6 +55,14 @@ export class Hud {
     };
     this.results.hidden = true;
     this.setup.hidden = false;
+  }
+
+  /** A driver not yet on the grid, drawn at random; the interim form's stand-in for the opponent picker. */
+  private freeDriverName(): string {
+    const taken = new Set(Array.from(this.rows.querySelectorAll('input')).map((i) => i.value.trim().toLowerCase()));
+    const free = ROSTER.filter((d) => !taken.has(d.name.toLowerCase()));
+    if (free.length === 0) return `Player ${this.rows.childElementCount + 1}`;
+    return free[Math.floor(Math.random() * free.length)].name;
   }
 
   /** Scenario mode starts the race without the form. */
@@ -65,11 +80,21 @@ export class Hud {
       <input type="text" class="field" value="${name}" maxlength="16" />
       <select class="field"><option value="human"${ai ? '' : ' selected'}>Human</option><option value="ai"${ai ? ' selected' : ''}>AI</option></select>
       <button type="button" class="btn btn-icon" aria-label="Remove">${icon('close')}</button>`;
+    (row.querySelector('select') as HTMLSelectElement).onchange = (e) => {
+      const input = row.querySelector('input') as HTMLInputElement;
+      const human = (e.target as HTMLSelectElement).value === 'human';
+      if (human && driverByName(input.value)) input.value = `Player ${this.humanCount() + 1}`;
+      if (!human && /^Player \d+$/.test(input.value)) input.value = this.freeDriverName();
+    };
     (row.querySelector('button') as HTMLButtonElement).onclick = () => {
       row.remove();
       this.recolorRows();
     };
     this.rows.appendChild(row);
+  }
+
+  private humanCount(): number {
+    return Array.from(this.rows.querySelectorAll('select')).filter((sel) => sel.value === 'human').length;
   }
 
   private recolorRows(): void {
@@ -86,7 +111,7 @@ export class Hud {
         const stat = p.finished ? `P${p.place}` : `lap ${Math.max(0, p.lap) + 1}/${game.rules.laps}`;
         return `<div class="player${isCurrent ? ' current' : ''}" style="--c:${hex(p.color)}">
           <span class="dot" style="background:${hex(p.color)}"></span>
-          <span class="name">${p.name}${p.ai ? ' <span class="stat">(AI)</span>' : ''}</span>
+          <span class="name">${p.name}</span>
           <span class="stat">${stat}</span>
         </div>`;
       })
@@ -119,17 +144,6 @@ export class Hud {
     this.message.classList.add('show');
     window.clearTimeout(this.messageTimer);
     this.messageTimer = window.setTimeout(() => this.message.classList.remove('show'), ms);
-  }
-
-  showPower(p: number | null): void {
-    if (p === null) {
-      this.power.textContent = '';
-      this.power.style.display = 'none';
-      return;
-    }
-    const label = p < 0.3 ? 'gentle' : p < 0.6 ? 'safe' : p < 0.8 ? 'brisk' : 'risky';
-    this.power.style.display = '';
-    this.power.textContent = `Power ${Math.round(p * 100)}% · ${label}`;
   }
 
   showResults(placings: Player[], onAgain: () => void): void {

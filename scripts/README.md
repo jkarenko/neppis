@@ -21,6 +21,7 @@ browser. None ship with the game.
 | `probes/debug-flick.ts` | Step-by-step trace of a single flick. |
 | `probes/perf.ts` | Times the physics step with one or more cars on the real track. |
 | `probes/lap-trace.ts` | One AI driver alone for a lap: per flick, planned distance against distance gained. `lap-trace.ts <driver-id>`, `TRACK=`. |
+| `probes/ridge-turn.ts` | A car straddling the ridge, nose turned by the aim preview, flicked: where it goes. `RIDGE=` overrides the ridge height. |
 | `probes/spot-variance.ts` | The same flick from many spots along a straight, to separate track geometry from the flick model. `TEXTURE=` scales the floor texture. |
 
 Run a probe with `./node_modules/.bin/tsx scripts/probes/<name>.ts`.

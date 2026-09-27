@@ -71,7 +71,6 @@ const CELL_COARSE = 0.5;
 /** Cars whose centre is within this margin outside the strip still count as on the track. */
 const ON_TRACK_MARGIN = 0.15;
 const FLOOR_DEPTH = 0.08;
-const RIDGE_HEIGHT = 0.12;
 const RIDGE_HALF = 0.3;
 /** The ribbon reaches this far beyond the ridge, as a band of foot-smoothed sand. */
 const RIBBON_EXTRA = 0.45;
@@ -284,7 +283,7 @@ export class Track {
       const u = (ad - ridgeCentre) / RIDGE_HALF; // -0.5 .. 1
       const bump = Math.cos((Math.PI / 2) * Math.max(-1, Math.min(1, u)));
       const base = ad < ridgeCentre ? -FLOOR_DEPTH * (1 - (ad - hw) / (ridgeCentre - hw)) : 0;
-      h = base + RIDGE_HEIGHT * bump * bump;
+      h = base + TRACK_DETAIL.ridgeHeight * bump * bump;
     } else {
       h = 0;
     }

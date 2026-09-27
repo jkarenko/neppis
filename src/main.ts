@@ -117,6 +117,12 @@ async function main(): Promise<void> {
     endFinger();
   }
 
+  /** The ring under the car marks "your flick, drag from here": only while a human may aim and is not yet dragging. */
+  function showCue(): void {
+    if (game.currentIsHuman) cue.show(game.current!.color);
+    else cue.hide();
+  }
+
   const game = new Game(world, track, scene, rules, {
     message: (text, ms) => hud.say(text, ms),
     turnStart: (p) => {
@@ -131,9 +137,13 @@ async function main(): Promise<void> {
     },
     flick: () => {
       camAnim = null;
-      endFinger();
+      endCue();
     },
-    changed: () => hud.render(game),
+    changed: () => {
+      hud.render(game);
+      // Back in the aim phase after a flick resolved: the ring returns until the next drag starts.
+      if (game.phase === 'aim' && !cue.visible) showCue();
+    },
     raceOver: (placings) => {
       hud.showResults(placings, () => hud.showSetup(startRace));
     },
@@ -152,10 +162,11 @@ async function main(): Promise<void> {
       if (!aim || !game.current) {
         game.cancelAim();
         indicator.hide();
-        hud.showPower(null);
+        showCue();
         return;
       }
       endFinger();
+      cue.hide();
       // The nose turns towards the aim as far as the turn wedge allows; the ribbon shows the line the car will
       // actually take, drawn from where the finger would be on that line.
       const yaw = game.rotateCurrent(Math.atan2(-aim.dir.z, aim.dir.x));
@@ -165,11 +176,9 @@ async function main(): Promise<void> {
       const reach = Math.hypot(aim.current.x - pos.x, aim.current.z - pos.z);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(reach));
       indicator.show(pos, dir, from, aim.power, aim.valid);
-      hud.showPower(aim.valid ? aim.power : null);
     },
     onFlick: (dir, power) => {
       indicator.hide();
-      hud.showPower(null);
       game.flick(dir, power);
     },
   });
@@ -188,7 +197,6 @@ async function main(): Promise<void> {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  hud.showPower(null);
   if (scenario) {
     hud.hideSetup();
     startRace(scenario.players, scenario.laps);
@@ -263,7 +271,7 @@ async function main(): Promise<void> {
       game.rotateCurrent(yaw);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(0.6 + 3 * power));
       indicator.show(pos, dir, from, power, true);
-      hud.showPower(power);
+      cue.hide();
       return state();
     };
     const step = (seconds: number) => {
@@ -280,7 +288,6 @@ async function main(): Promise<void> {
         aim(headingDeg, power);
         const { dir } = aimDir(headingDeg);
         indicator.hide();
-        hud.showPower(null);
         game.flick(dir, power);
         return state();
       },

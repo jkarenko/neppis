@@ -18,7 +18,6 @@
       <div id="players"></div>
       <div id="turn" hidden></div>
       <div id="message"></div>
-      <div id="power"></div>
       <div id="finger" hidden>
         <div class="touch"></div>
         <div class="trail"></div>
@@ -32,10 +31,13 @@
       <form id="setupForm" class="card">
         <h1>Neppis</h1>
         <p class="sub">Finnish flick-car racing. Three flicks per turn. Stay on the track, keep the rubber side down.</p>
-        <div id="playerRows"></div>
-        <div class="row-actions">
-          <button type="button" id="addPlayer" class="btn">+ Add player</button>
-          <label class="strip">Laps <input type="number" id="laps" class="field" min="1" max="5" value="1" /></label>
+        <div class="setup-grid">
+          <div id="playerRows"></div>
+          <div class="setup-side">
+            <button type="button" id="addPlayer" class="btn btn-block">+ Add player</button>
+            <div class="strip"><span>Laps</span><span class="stepper"><button type="button" id="lapsMinus" class="btn btn-icon" aria-label="Fewer laps"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span id="lapsValue" class="value num">1</span><button type="button" id="lapsPlus" class="btn btn-icon" aria-label="More laps"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+            <input type="hidden" id="laps" value="1" />
+          </div>
         </div>
         <button type="submit" id="start" class="btn btn-primary btn-block">Start race</button>
       </form>

@@ -109,6 +109,12 @@ facing backwards could simply be aimed forwards again.
   second flick cut across the infield from the start straight to the back straight and was
   scored clean, with its lap count going backwards. The rule should also catch a flight that
   left the track and came back on, placing the car at the last on-track point. Not fixed yet.
+- **The ridge is a kerb.** Measured 2026-09-27 with `scripts/probes/ridge-turn.ts`: a car straddling the
+  ridge, nose turned 40° inward, launched at 0.5 power, goes where the nose points for the first
+  few centimetres and is then deflected along the ridge, stopped, or flipped, because the ridge is
+  0.12 tall, the same as the wheel radius. At 0.06 the car crosses it on its wheels; at 0.03 it
+  travels within 10° of its nose. `TRACK_DETAIL.ridgeHeight` is the knob; the AI ladder was tuned
+  at 0.12. Not decided yet.
 - **Open until tried.** Whether the limit is per flick (as above) or per three-flick turn.
   Per flick is the assumption. Per turn would make a spin cost most of a round and is probably
   too harsh, but it is a one-line change if 45° per flick turns out to be too forgiving.
@@ -145,9 +151,12 @@ alternatives in brackets exist in `Rules` but are not the default.
 - At each turn start the camera glides in 0.7 s to sit behind and above the current car,
   looking along the track. It then follows the car during the flick. Drag to orbit, wheel or
   pinch to zoom.
-- A human's car sits on a pulsing ring for the whole turn. On each human's first turn of a race
-  a finger animation drags down from the car until they start dragging themselves.
-- Flicks left are shown as three chevrons in the current player's colour.
+- A human's car sits on a pulsing ring while a flick can be aimed and no drag has started: it
+  goes when the drag begins or the flick is released, and comes back once the car has settled and
+  another flick is due. On each human's first turn of a race a finger animation drags down from
+  the car until they start dragging themselves.
+- Flicks left are shown as three chevrons in the current player's colour. There is no numeric
+  power readout: the ribbon's colour is the power indicator.
 
 ## 7. AI drivers
 
