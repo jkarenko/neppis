@@ -91,39 +91,41 @@ place, flips, tips, off-tracks and flicks per lap per driver. That table is how 
 tuned. Mean place depends on who else was in the heat and needs many heats to settle; flicks per
 lap is the steadier pace measure and should fall as the ladder number rises.
 
-Baseline, 2026-09-27, `SEED=11 pnpm simrace roster 28` on Hietsu, eight races per driver (measured with the
-four-iteration solver; the world runs twelve since the evening of 2026-09-27, see gameplay.md section 2, so the next
-tuning pass should start with a fresh baseline):
+Baseline, 2026-09-27 evening, `SEED=11 pnpm simrace roster 28` on Hietsu, eight races per driver, with the
+twelve-iteration solver, the turn-power cap and off track judged along the whole flight (gameplay.md sections 2
+to 4). 206 of 5682 flicks were pulled into the 45° wedge.
 
-| # | driver | wins | mean place | flips | off | flicks/lap |
-|---|---|---|---|---|---|---|
-| 1 | Rando Nervous | 0 | 5.13 | 0 | 1 | 40.6 |
-| 2 | Hanami Cola | 1 | 3.13 | 0 | 0 | 42.6 |
-| 3 | Steady Betty | 1 | 4.13 | 0 | 0 | 42.4 |
-| 4 | Callow Rollover | 2 | 3.13 | 0 | 1 | 34.1 |
-| 5 | Gene Lazy | 1 | 3.50 | 0 | 0 | 35.0 |
-| 6 | John Hangover | 0 | 5.38 | 0 | 1 | 38.8 |
-| 7 | Checky Stalwart | 0 | 4.25 | 0 | 0 | 31.9 |
-| 8 | Nudge Manhandle | 3 | 3.13 | 0 | 1 | 30.1 |
-| 9 | Mash Overstep | 0 | 4.00 | 0 | 0 | 36.0 |
-| 10 | Killian Clonkin | 0 | 4.13 | 1 | 0 | 30.5 |
-| 11 | Mike Rometer | 3 | 2.75 | 0 | 0 | 30.5 |
-| 12 | Denny Ricochet | 1 | 3.75 | 2 | 2 | 33.6 |
-| 13 | Dark Web | 1 | 3.38 | 0 | 0 | 34.3 |
-| 14 | Nicky Louder | 3 | 2.75 | 0 | 0 | 31.0 |
-| 15 | Bruise Hammerton | 1 | 3.38 | 1 | 1 | 39.5 |
-| 16 | Bea Line | 1 | 3.38 | 0 | 0 | 30.3 |
-| 17 | Bastion Vette | 1 | 2.88 | 0 | 0 | 29.8 |
-| 18 | Rufus Turner | 1 | 3.88 | 3 | 2 | 31.0 |
-| 19 | Airtime Sender | 4 | 2.38 | 0 | 0 | 31.9 |
-| 20 | Harald Frost | 1 | 3.25 | 0 | 0 | 31.8 |
-| 21 | The Dune | 3 | 1.88 | 0 | 0 | 28.9 |
+| # | driver | wins | mean place | flips | tips | off | flicks/lap |
+|---|---|---|---|---|---|---|---|
+| 1 | Rando Nervous | 0 | 5.25 | 0 | 0 | 1 | 40.8 |
+| 2 | Hanami Cola | 0 | 3.00 | 0 | 0 | 0 | 40.6 |
+| 3 | Steady Betty | 1 | 4.13 | 0 | 0 | 0 | 41.4 |
+| 4 | Callow Rollover | 1 | 2.88 | 0 | 0 | 0 | 34.8 |
+| 5 | Gene Lazy | 1 | 3.75 | 0 | 0 | 0 | 34.8 |
+| 6 | John Hangover | 0 | 5.63 | 0 | 0 | 1 | 35.5 |
+| 7 | Checky Stalwart | 0 | 4.25 | 0 | 0 | 0 | 33.0 |
+| 8 | Nudge Manhandle | 1 | 3.13 | 0 | 0 | 1 | 30.4 |
+| 9 | Mash Overstep | 1 | 4.00 | 0 | 1 | 0 | 35.1 |
+| 10 | Killian Clonkin | 1 | 4.25 | 0 | 0 | 4 | 31.0 |
+| 11 | Mike Rometer | 4 | 2.38 | 0 | 0 | 0 | 29.0 |
+| 12 | Denny Ricochet | 1 | 3.13 | 2 | 0 | 2 | 31.5 |
+| 13 | Dark Web | 0 | 3.88 | 0 | 0 | 1 | 32.3 |
+| 14 | Nicky Louder | 4 | 2.38 | 0 | 0 | 0 | 32.0 |
+| 15 | Bruise Hammerton | 3 | 3.50 | 0 | 0 | 0 | 40.1 |
+| 16 | Bea Line | 0 | 3.50 | 0 | 0 | 0 | 30.6 |
+| 17 | Bastion Vette | 2 | 2.75 | 0 | 0 | 0 | 31.0 |
+| 18 | Rufus Turner | 0 | 4.38 | 2 | 0 | 10 | 31.9 |
+| 19 | Airtime Sender | 1 | 2.50 | 0 | 0 | 0 | 34.0 |
+| 20 | Harald Frost | 2 | 3.25 | 0 | 0 | 0 | 33.1 |
+| 21 | The Dune | 5 | 1.63 | 1 | 0 | 0 | 27.5 |
 
-Reading it: the ends hold (the bottom three lap in 40 or more flicks, the top five in 29 to 32) and
-the middle is a jumble within the noise of eight races. Two outliers to look at next time the
-ladder is tuned: Bruise Hammerton is far slower than his stats say, and Callow Rollover faster.
-Flips are rare on Hietsu for everyone, 7 in 5715 flicks, so nerve currently costs distance rather
-than roofs; the jump at 0.27 is not steep enough to punish full power. The pace numbers say the
-whole field is slow, about 30 flicks for a 113-unit lap, because any wheel on the ridge stops the
-car; that is the track, not the drivers.
+Reading it: the shape of the previous baseline (four-iteration solver, off track judged at rest only) holds. The
+ends still hold (the bottom three lap in 40 or more flicks, The Dune in 27.5) and the middle is a jumble within
+the noise of eight races. The same two outliers remain: Bruise Hammerton laps as slowly as the bottom three yet
+wins three, and Callow Rollover is faster than his stats say. New since the last baseline: Rufus Turner's
+off-tracks went from 2 to 10 and Killian Clonkin's from 0 to 4 while nobody else's moved, which fits leaving the
+track now being judged along the whole flight rather than where the car stops; the two are the ladder's nerve
+cases and cut lines over the ridge. Whether that costs them places needs more heats than eight. Flips stay rare on
+Hietsu, 5 in 5682 flicks, so nerve costs distance rather than roofs. The whole field is still slow, about 30
+flicks for a 113-unit lap, because any wheel on the ridge stops the car; that is the track, not the drivers.
 

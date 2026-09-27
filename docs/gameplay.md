@@ -87,8 +87,9 @@ facing backwards could simply be aimed forwards again.
   scale, red straight ahead through yellow and green to blue at the edges, so it tells the
   player before they drag what each angle can give. The wedge is a mesh of rings and slices
   whose vertices are lifted to the track height, so it rides over the ridge and the jump
-  instead of vanishing under them, and each vertex carries its own angle's colour. The AI plans under the same cap. The ladder
-  baseline in `drivers.md` predates this rule.
+  instead of vanishing under them, and each vertex carries its own angle's colour. The pulsing
+  ring under the car is laid on the ground the same way. The AI plans under the same cap, and
+  the ladder baseline in `drivers.md` was measured with it.
 - **Penalty placements** keep their heading rules: back to the flick start means the heading
   the flick was aimed at, back to the last on-track point means the direction of travel at that
   point, and the tip midpoint means the direction of travel there. So a car returned after
