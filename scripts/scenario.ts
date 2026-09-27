@@ -4,7 +4,8 @@
 //                     "track=test&car=0.1,0.9,30" (see src/scenario.ts)
 //     flick           "heading,power": heading in degrees relative to travel (positive right), power 0..1.
 //                     Each flick is released, settled, and its resulting state printed. A flick of "ai" instead
-//                     lets an AI turn play out.
+//                     lets an AI turn play out. "drag:heading,power" does the same through real pointer events,
+//                     a mouse drag from the car on screen, so the input path is exercised, not just the game.
 //   OUT=path.png      screenshot before the first flick and after each one (path-0.png, path-1.png, ...); with
 //                     AIM=1 the "before" shot shows the first flick's aim held instead of the resting car.
 //   VIEWPORT=spec     one preset or WxH[@scale] (default ipad-landscape@2). URL=... for a different dev server.
@@ -49,6 +50,24 @@ for (const [i, f] of flicks.entries()) {
   let state: unknown;
   if (f === 'ai') {
     state = await dbg((d) => d.step(2.5));
+    state = await dbg((d) => d.settle());
+  } else if (f.startsWith('drag:')) {
+    // Drag from the car, away from the aim: the flick direction runs from the finger through the car. Screen y is
+    // down, so with the chase camera looking along the track a heading of 0 is a drag straight down the screen.
+    const [h, p] = f.slice(5).split(',').map(Number);
+    const at = await dbg((d) => d.carScreen());
+    if (!at) throw new Error('no current car to drag from');
+    const full = Math.min(vp.width, vp.height) * 0.33;
+    const len = 12 + p * full;
+    const a = ((h + 90) * Math.PI) / 180; // 0 → straight down the screen, positive right → anticlockwise on screen
+    const to = { x: at.x + Math.cos(a) * len, y: at.y + Math.sin(a) * len };
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(at.x + ((to.x - at.x) * i) / 12, at.y + ((to.y - at.y) * i) / 12);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
     state = await dbg((d) => d.settle());
   } else {
     const [h, p] = f.split(',').map(Number);

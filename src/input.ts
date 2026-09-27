@@ -14,7 +14,9 @@ export interface AimState {
 export interface InputHandlers {
   /** Car position to aim at, or null when flick input is not accepted right now. */
   target: () => THREE.Vector3 | null;
+  /** The aim changed, or (null) the drag was let go without a flick. */
   onAim: (aim: AimState | null) => void;
+  /** The drag was released as a flick; no onAim(null) precedes this. */
   onFlick: (dir: { x: number; z: number }, power: number) => void;
 }
 
@@ -143,8 +145,8 @@ export class FlickInput {
     this.active.delete(ev.pointerId);
     if (ev.pointerId !== this.pointerId) return;
     if (this.aim && this.aim.valid && ev.type === 'pointerup') {
+      // A flick, not a cancel: onAim(null) is not sent, so the handler keeps the aimed pose it is about to launch.
       const { dir, power } = this.aim;
-      this.h.onAim(null);
       this.pointerId = null;
       this.aim = null;
       this.h.onFlick(dir, power);

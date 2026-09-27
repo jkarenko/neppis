@@ -113,6 +113,11 @@ facing backwards could simply be aimed forwards again.
   second flick cut across the infield from the start straight to the back straight and was
   scored clean, with its lap count going backwards. The rule should also catch a flight that
   left the track and came back on, placing the car at the last on-track point. Not fixed yet.
+- **The release keeps the aim.** A drag released as a flick must not be reported as an ended aim
+  first: for one review round it was, the aim-ended handler cleared the preview, and every real
+  flick launched along the car's old heading while the debug handle and the Node probes, which
+  call aim and flick directly, kept passing. `pnpm scenario <preset> drag:heading,power` now
+  flicks through real pointer events so the input path is tested, not just the game.
 - **The ridge.** With the settled release, a car straddling the ridge with the nose turned 40°
   inward and launched at 0.5 power goes along the aim on its wheels from every position tried
   (`scripts/probes/ridge-turn.ts`). The ridge is 0.12 tall, the same as the wheel radius, and
