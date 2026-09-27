@@ -1,14 +1,37 @@
 import * as THREE from 'three';
-import { CAR } from './config.ts';
+import { CAR, FLICK } from './config.ts';
 
-/** Pulsing glowing ring under the car: the first-turn "this one is yours, drag from here" cue. */
+/** A 90° sector on the ground in front of the car: the headings a flick may take. */
+function sector(radius: number, halfAngle: number, segments = 24): THREE.BufferGeometry {
+  const pts = [0, 0, 0];
+  for (let i = 0; i <= segments; i++) {
+    const a = -halfAngle + (2 * halfAngle * i) / segments;
+    pts.push(Math.cos(a) * radius, 0, -Math.sin(a) * radius);
+  }
+  const idx: number[] = [];
+  for (let i = 1; i <= segments; i++) idx.push(0, i + 1, i);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * Pulsing glowing ring under the car: the "this one is yours, drag from here" cue. While a drag is on, the ring gives
+ * way to the turn wedge: the 90° sector of headings the flick may take, centred on the heading the car rests with.
+ */
 export class TurnCue {
   readonly group: THREE.Group;
   private readonly ring: THREE.Mesh;
   private readonly glow: THREE.Mesh;
   private readonly ringMaterial: THREE.MeshBasicMaterial;
   private readonly glowMaterial: THREE.MeshBasicMaterial;
+  private readonly wedge: THREE.Group;
+  private readonly wedgeFill: THREE.MeshBasicMaterial;
+  private readonly wedgeRim: THREE.LineBasicMaterial;
   private active = false;
+  private wedgeOn = false;
 
   constructor() {
     this.group = new THREE.Group();
@@ -41,6 +64,48 @@ export class TurnCue {
 
     this.group.add(this.glow, this.ring);
     this.group.visible = false;
+
+    const halfAngle = (FLICK.maxTurnDeg * Math.PI) / 180;
+    this.wedgeFill = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide });
+    const fill = new THREE.Mesh(sector(2.4, halfAngle), this.wedgeFill);
+    fill.renderOrder = 7;
+    this.wedgeRim = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
+    const rimPts: THREE.Vector3[] = [new THREE.Vector3(Math.cos(halfAngle) * 2.4, 0, Math.sin(halfAngle) * 2.4), new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(halfAngle) * 2.4, 0, -Math.sin(halfAngle) * 2.4)];
+    const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rimPts), this.wedgeRim);
+    rim.renderOrder = 8;
+    this.wedge = new THREE.Group();
+    this.wedge.add(fill, rim);
+    this.wedge.visible = false;
+  }
+
+  /** The scene object for the wedge; separate from the ring's group so each shows on its own. */
+  get wedgeObject(): THREE.Object3D {
+    return this.wedge;
+  }
+
+  /**
+   * Show the wedge in the driver's colour, its centre line along `yaw`, at the car. `pushing` means the finger asks
+   * for more turn than the wedge gives: the fill brightens and the rim goes white, a change that reads in every car
+   * colour (red would clash with the ribbon's own "risky" red).
+   */
+  showWedge(color: number, car: THREE.Vector3, yaw: number, pushing = false): void {
+    this.wedgeFill.color.set(color);
+    this.wedgeFill.opacity = pushing ? 0.34 : 0.16;
+    this.wedgeRim.color.set(pushing ? 0xffffff : color);
+    this.wedgeRim.opacity = pushing ? 1 : 0.85;
+    this.wedge.position.set(car.x, car.y - CAR.restHeight + 0.045, car.z);
+    this.wedge.rotation.y = yaw;
+    this.wedge.visible = true;
+    this.wedgeOn = true;
+  }
+
+  hideWedge(): void {
+    this.wedge.visible = false;
+    this.wedgeOn = false;
+  }
+
+  get wedgeVisible(): boolean {
+    return this.wedgeOn;
   }
 
   show(color: number): void {

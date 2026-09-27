@@ -47,9 +47,7 @@
   line-height: 1.35;
   -webkit-font-smoothing: antialiased;
 }
-@media (prefers-reduced-motion: reduce) {
-  :root { --t-fast: 0ms; --t-base: 0ms; }
-}
+html.reduce-motion { --t-fast: 0ms; --t-base: 0ms; }
 
 /* Keep text hidden until Inter has loaded (index.html), so none is ever painted in a fallback font. The boot mark
    and bar need no font and paint at once. */
@@ -75,6 +73,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 @media (pointer: fine) { .boot-play .if-touch { display: none; } .boot-play .if-fine { display: inline; } }
 @keyframes bootPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .boot-play { animation: none; } }
+html.reduce-motion .boot-play { animation: none; }
 #boot .boot-fail { display: none; flex-direction: column; align-items: center; gap: 12px; margin-top: 22px; }
 .boot-failmsg { color: var(--danger); font-size: var(--fs-body); max-width: 320px; }
 #boot.is-ready .boot-progress, #boot.is-failed .boot-progress { display: none; }
@@ -118,6 +117,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3f2; }
 .row .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); background: var(--c); }
 .row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .stat { color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-label); }
+.row .hint { display: block; color: var(--muted); font-size: var(--fs-label); white-space: normal; }
 .list { display: flex; flex-direction: column; gap: 2px; }
 .col { display: flex; flex-direction: column; gap: 8px; }
 
@@ -206,10 +206,14 @@ button.driver:disabled { opacity: 0.4; cursor: default; }
 #turn { position: absolute; top: var(--inset-top); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 #turn[hidden] { display: none; }
 #turn svg { width: 18px; height: 18px; display: block; }
+#turn .portrait { width: 28px; height: 28px; margin: 0 6px 0 -6px; }
+#turn .portrait .face { width: 100%; height: 100%; }
+#turn .name { margin-left: 6px; font-size: var(--fs-body); font-weight: 600; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #turn svg path { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 #turn svg.used path { stroke: color-mix(in srgb, var(--c) 35%, transparent); }
-#message { position: absolute; top: calc(var(--inset-top) + 46px); left: 50%; transform: translateX(-50%); background: var(--surface-strong); padding: 8px 16px; border-radius: var(--r-pill); font-size: 15px; opacity: 0; transition: opacity var(--t-base); max-width: 80vw; text-align: center; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+#message { position: absolute; top: calc(var(--inset-top) + 46px); left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity var(--t-base); text-align: left; width: max-content; max-width: min(80vw, 520px); }
 #message.show { opacity: 1; }
+#message:empty { display: none; }
 /* First-turn cue: a finger drags down from the car, leaving a swipe trail that fades behind it. The container sits
    at the car's screen position (set each frame); children are placed relative to it. One 1.6 s cycle: appear at the
    car, drag down, fade out in place, restart. */
@@ -239,12 +243,10 @@ button.driver:disabled { opacity: 0.4; cursor: default; }
   70% { transform: scale(1); opacity: 0.35; }
   82%, 100% { opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) {
-  #finger .hand, #finger .trail, #finger .touch { animation: none; }
-  #finger .hand { transform: translateY(calc(var(--travel) / 2)); opacity: 1; }
-  #finger .trail { transform: scaleY(0.5); opacity: 1; }
-  #finger .touch { opacity: 0.6; }
-}
+html.reduce-motion #finger .hand, html.reduce-motion #finger .trail, html.reduce-motion #finger .touch { animation: none; }
+html.reduce-motion #finger .hand { transform: translateY(calc(var(--travel) / 2)); opacity: 1; }
+html.reduce-motion #finger .trail { transform: scaleY(0.5); opacity: 1; }
+html.reduce-motion #finger .touch { opacity: 0.6; }
 #pauseBtn { pointer-events: auto; position: absolute; right: var(--inset-right); bottom: var(--inset-bottom); }
 #pauseBtn[hidden] { display: none; }
 
@@ -297,6 +299,21 @@ button.driver:disabled { opacity: 0.4; cursor: default; }
   .setup-foot { flex-wrap: wrap; }
   .setup-foot .btn-primary { flex: 1 0 100%; }
 }
+/* How to play: three pages in a snapping strip, one illustration and two lines each, page dots under them. */
+.howto-card { width: min(94vw, 900px); }
+.howto-strip { gap: 12px; margin: 4px -4px 0; padding: 4px 4px 8px; scroll-snap-type: x mandatory; }
+.howto-page { flex: 0 0 min(100%, 272px); scroll-snap-align: center; border-radius: var(--r-card); background: var(--surface-raised); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.howto-page h3 { margin: 0; font-size: var(--fs-control); font-weight: 600; }
+.howto-page p { margin: 0; color: var(--muted); font-size: var(--fs-body); }
+.howto-art { height: 140px; border-radius: var(--r-chip); background: rgba(0, 0, 0, 0.25); display: grid; place-items: center; padding: 8px; }
+.howto-art svg { width: 100%; height: 100%; }
+.howto-list { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.howto-list .toast { min-height: 34px; font-size: 13px; padding: 4px 12px 4px 10px; gap: 8px; max-width: 100%; }
+.howto-list .toast .icon { width: 20px; height: 20px; }
+.howto-dots { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.howto-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.howto-dots i.is-on { background: var(--text); }
+@media (min-width: 900px) { .howto-page { flex-basis: calc((100% - 24px) / 3); } }
 /* Opponents screen: the ladder by tier; the card scrolls inside the overlay. */
 .roster-card { width: min(94vw, 1120px); max-height: calc(100dvh - var(--inset-top) - var(--inset-bottom)); overflow: auto; overscroll-behavior: contain; }
 #roster h3 { margin: 12px 0 8px; font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }

@@ -8,7 +8,7 @@
 //   resized in place, so a full set takes about a minute.
 //   DRAG_PX=n holds a flick drag from the car (viewport centre) while shooting. WAIT_MS, STATS=1 as before.
 //   FULL=1 captures the whole scrollable page, for the kit (?kit). STOP=menu|setup stops at that screen instead of
-//   starting the race (STOP=opponents opens that screen); HOLD=1 shoots the title screen; with ?boot=hold in the url
+//   starting the race (STOP=opponents|howto|settings opens that screen); HOLD=1 shoots the title screen; with ?boot=hold in the url
 //   the loading state is shot.
 import { readFile } from 'node:fs/promises';
 import type { Page } from 'playwright';
@@ -78,8 +78,8 @@ for (const [scale, group] of byScale) {
       await page.click('#boot');
       await page.waitForTimeout(400);
     }
-    if (stop === 'opponents' && (await page.isVisible('#menuOpponents'))) {
-      await page.click('#menuOpponents');
+    if ((stop === 'opponents' || stop === 'howto' || stop === 'settings') && (await page.isVisible('#menuRace'))) {
+      await page.click(stop === 'opponents' ? '#menuOpponents' : stop === 'howto' ? '#menuHowto' : '#menuSettings');
       await page.waitForTimeout(300);
     } else if (stop !== 'menu' && (await page.isVisible('#menuRace'))) {
       await page.click('#menuRace');

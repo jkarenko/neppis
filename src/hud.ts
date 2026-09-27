@@ -1,8 +1,14 @@
-import type { Game } from './game.ts';
+import type { Game, MessageKind } from './game.ts';
+import { DRIVER_BY_ID } from './roster.ts';
+import { portrait } from './portraits.ts';
+import { icon, type IconName } from './icons.ts';
 
 function hex(c: number): string {
   return '#' + c.toString(16).padStart(6, '0');
 }
+
+const TOAST_ICON: Record<MessageKind, IconName> = { flip: 'flip', tip: 'tip', offtrack: 'offtrack', finish: 'flag', info: 'info' };
+const TOAST_CLASS: Record<MessageKind, string> = { flip: 'is-bad', tip: 'is-warn', offtrack: 'is-warn', finish: 'is-good', info: '' };
 
 export class Hud {
   private readonly players = document.getElementById('players')!;
@@ -25,14 +31,19 @@ export class Hud {
       })
       .join('');
 
-    // Flicks left, top centre, in the current car's colour. Whose turn it is comes from the colour alone.
+    // Whose turn and flicks left, top centre: the chevrons in the car's colour, the name beside them (colour alone
+    // fails red/green players), and on an AI turn the driver's face.
     if (!current) {
       this.turn.hidden = true;
       return;
     }
     const chevron = (used: boolean) => `<svg viewBox="0 0 18 18"${used ? ' class="used"' : ''}><path d="M4 6 L9 12 L14 6"/></svg>`;
+    const driver = current.driverId ? DRIVER_BY_ID[current.driverId] : undefined;
     this.turn.style.setProperty('--c', hex(current.color));
-    this.turn.innerHTML = Array.from({ length: game.rules.flicksPerTurn }, (_, i) => chevron(i >= game.flicksLeft)).join('');
+    this.turn.innerHTML =
+      (driver ? `<span class="portrait is-small">${portrait(driver.portrait)}</span>` : '') +
+      Array.from({ length: game.rules.flicksPerTurn }, (_, i) => chevron(i >= game.flicksLeft)).join('') +
+      `<span class="name">${current.name}</span>`;
     this.turn.hidden = false;
   }
 
@@ -47,8 +58,11 @@ export class Hud {
     this.finger.style.top = `${at.y}px`;
   }
 
-  say(text: string, ms = 2600): void {
-    this.message.textContent = text;
+  /** One toast under the turn chip: an icon for the kind, then the sentence. The newest replaces the previous. */
+  say(text: string, kind: MessageKind = 'info', ms = 2600): void {
+    this.message.className = `toast ${TOAST_CLASS[kind]}`;
+    this.message.innerHTML = `${icon(TOAST_ICON[kind])}<span></span>`;
+    this.message.lastElementChild!.textContent = text;
     this.message.classList.add('show');
     window.clearTimeout(this.messageTimer);
     this.messageTimer = window.setTimeout(() => this.message.classList.remove('show'), ms);

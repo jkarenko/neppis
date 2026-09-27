@@ -192,6 +192,58 @@ Two sections, then a footer with laps and Start.
   ladder before you take it on.
 
 ### Race HUD (existing, adjusted)
+
+Design reading for step 7 (2026-09-27, before building):
+
+- **Job.** During a race the HUD answers four questions without being read: whose turn, how many
+  flicks left, what just happened, and where the car may go. Everything else stays out of the way
+  of the drag.
+- **Whose turn** is the chip at top centre: the three chevrons in the driver's colour, and now the
+  name beside them, because colour alone fails red/green players and white is a car colour. On an
+  AI turn the driver's portrait sits at the left of the chip, so the opponent has a face while it
+  plays; on a human turn there is no face (a human has none to show, and an initial in a circle
+  would be a second name). The chip is the one place this lives: the plan's idea of a portrait in
+  the standings row would grow that row from a 14 px dot to a 32 px face and shift the list every
+  turn, which breaks the no-layout-shift rule; the standings keep their dots.
+- **What just happened** is one toast under the chip: icon plus one sentence, the icon carrying
+  the category so it reads before the words. Flip (car on its roof, danger colour), tip (car on
+  its side, warn), off track (road with a question mark, warn), finish (flag, ok). The game
+  reports the kind with the message; the text stays English and short. One slot, the newest
+  replaces the previous; 2.6 s, 4 s for a finish.
+- **Where the car may go** is the turn wedge: while a drag is on, a 90° sector on the ground in
+  front of the car in the driver's colour (faint fill, brighter rim), centred on the heading it
+  rests with, so the 45° limit is visible where the finger is looking. The ribbon keeps showing
+  the line the car will actually take, and when the finger is past the edge the wedge brightens
+  and its rim goes white: "you are asking for more than the car will give". The brief's idea of
+  reddening the ribbon was dropped in the build: red on the ribbon already means risky power,
+  and a red car's wedge is red anyway, so a second red would say two things at once; a change
+  of brightness reads the same in every car colour. The wedge appears at the first pointer move
+  and goes at release or cancel, like the ribbon; before the drag the pulsing ring alone marks
+  the car. Reduced motion does not change it, since nothing about it moves.
+- **Pause** stays bottom right, 44 px, the only thing at the bottom.
+- **Settings** gains the rows that do something today: Sound (stored, the audio will honour it),
+  Haptics (a short vibration on release, where the browser supports it; defaults on where
+  supported and the row is hidden where it is not, rather than a switch that does nothing), and
+  Reduced motion (defaults from the OS media query, can be overridden; turns off the title pulse,
+  the finger cue's motion and the fades). Music and camera auto-follow are not rows yet: there is
+  no music, and a camera that does not follow the car has no design. The settings card is the
+  same from the menu and from pause.
+- **How to play** is a screen from the menu and from the pause card (it replaces the planned
+  Rules item): three cards side by side in a horizontal, snapping strip with a page dot under
+  them, each one illustration and two lines. One: drag back from the car to flick, the hand and
+  the coloured ribbon from the game itself. Two: three flicks a turn and a 45° turn each flick,
+  the chevrons and the wedge. Three: what a flip, a tip and going off track cost, the toast
+  icons with their placements. Back top left, Escape, and the strip scrolls with a finger or a
+  wheel; on a wide screen all three are visible at once and the dots are still shown so the
+  screen reads the same everywhere.
+- **Viewports.** The chip with a face and a long name ("Bruise Hammerton") must still clear the
+  standings on the phone in landscape: the name truncates with an ellipsis at 120 px before it
+  ever overlaps. The toast wraps to two lines on the phone rather than growing sideways.
+- **Testing.** `pnpm scenario ridge drag:-80,0.7` for the wedge and the red ribbon through the
+  real pointer path; the toasts through the ridge and jump flips; `STOP=howto` for the screen.
+
+Original brief:
+
 - Standings top-left (names only, no AI tag), turn chevrons top-centre with the driver's name
   added (colour alone fails red/green players). No power readout: the ribbon colour carries it,
   and redundant information does not get a second element.

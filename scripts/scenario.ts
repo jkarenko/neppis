@@ -41,7 +41,7 @@ const print = (label: string, state: unknown) => console.log(`${label} ${JSON.st
 
 print('loaded', await dbg((d) => d.state()));
 if (process.env.AIM && flicks[0] && flicks[0] !== 'ai') {
-  const [h, p] = flicks[0].split(',').map(Number);
+  const [h, p] = flicks[0].replace(/^drag:/, '').split(',').map(Number);
   await dbg((d, a) => d.aim(a[0], a[1]), [h, p]);
   await page.waitForTimeout(100);
 }

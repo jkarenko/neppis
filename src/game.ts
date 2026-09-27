@@ -55,8 +55,10 @@ export interface Player {
 export type Phase = 'setup' | 'aim' | 'flying' | 'settle' | 'finished';
 export type Outcome = 'ok' | 'kelli' | 'puolikelli' | 'offtrack';
 
+export type MessageKind = 'flip' | 'tip' | 'offtrack' | 'finish' | 'info';
+
 export interface GameEvents {
-  message(text: string, ms?: number): void;
+  message(text: string, kind: MessageKind, ms?: number): void;
   turnStart(p: Player): void;
   flick(p: Player): void;
   changed(): void;
@@ -93,7 +95,7 @@ export class Game {
   private aiTimer = 0;
   private aiPlan: Plan | null = null;
   /** The heading the current car came to rest with: the centre of the turn wedge for the next flick. */
-  private restYaw = 0;
+  restYaw = 0;
   /** AI flicks whose wanted line was outside the wedge, for the headless race report. */
   aiClamped = 0;
   /** The plan behind the AI's latest flick, for the headless tools. */
@@ -315,15 +317,15 @@ export class Game {
     switch (outcome) {
       case 'kelli':
         this.place(p, this.rules.kelli === 'turnStart' ? this.turnStart : this.flickStart);
-        this.events.message(`Flip! ${p.name} goes back to where the flick started.`);
+        this.events.message(`Flip! ${p.name} goes back to where the flick started.`, 'flip');
         break;
       case 'puolikelli':
         this.place(p, this.midpointPose());
-        this.events.message(`Tipped over. ${p.name} is put back halfway along the flick.`);
+        this.events.message(`Tipped over. ${p.name} is put back halfway along the flick.`, 'tip');
         break;
       case 'offtrack':
         this.place(p, this.rules.offTrack === 'flickStart' || !this.lastOnTrack ? this.flickStart : this.lastOnTrack);
-        this.events.message(`${p.name} left the track. Back to the last point on it.`);
+        this.events.message(`${p.name} left the track. Back to the last point on it.`, 'offtrack');
         break;
       case 'ok':
         break;
@@ -343,7 +345,7 @@ export class Game {
       if (!pl.finished && pl.lap >= this.rules.laps) {
         pl.finished = true;
         pl.place = ++this.finishedCount;
-        this.events.message(`${pl.name} crosses the line in place ${pl.place}!`, 4000);
+        this.events.message(`${pl.name} crosses the line in place ${pl.place}!`, 'finish', 4000);
       }
     }
 

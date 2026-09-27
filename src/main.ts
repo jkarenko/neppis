@@ -9,6 +9,7 @@ import { renderKit } from './kit.ts';
 import { boot } from './boot.ts';
 import { unlockAudio } from './audio.ts';
 import { App } from './app.ts';
+import { applyMotion, haptic } from './settings.ts';
 import { FlickIndicator } from './indicator.ts';
 import { TurnCue } from './cue.ts';
 import { FlickInput } from './input.ts';
@@ -16,6 +17,7 @@ import { Hud } from './hud.ts';
 import { DEFAULT_RULES, MAX_STEPS_PER_FRAME, PHYS_DT } from './config.ts';
 
 async function main(): Promise<void> {
+  applyMotion();
   // The kit page (?kit) shows every component over a live scene: the straight scenario, HUD hidden.
   const kit = new URLSearchParams(location.search).has('kit');
   const scenario: Scenario | null = kit
@@ -68,7 +70,7 @@ async function main(): Promise<void> {
   const indicator = new FlickIndicator();
   scene.add(indicator.group);
   const cue = new TurnCue();
-  scene.add(cue.group);
+  scene.add(cue.group, cue.wedgeObject);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
@@ -126,6 +128,7 @@ async function main(): Promise<void> {
   }
   function endCue(): void {
     cue.hide();
+    cue.hideWedge();
     endFinger();
   }
 
@@ -136,7 +139,7 @@ async function main(): Promise<void> {
   }
 
   const game = new Game(world, track, scene, rules, {
-    message: (text, ms) => hud.say(text, ms),
+    message: (text, kind, ms) => hud.say(text, kind, ms),
     turnStart: (p) => {
       frameCar(p);
       endCue();
@@ -172,23 +175,30 @@ async function main(): Promise<void> {
       if (!aim || !game.current) {
         game.cancelAim();
         indicator.hide();
+        cue.hideWedge();
         showCue();
         return;
       }
       endFinger();
       cue.hide();
       // The nose turns towards the aim as far as the turn wedge allows; the ribbon shows the line the car will
-      // actually take, drawn from where the finger would be on that line.
-      const yaw = game.rotateCurrent(Math.atan2(-aim.dir.z, aim.dir.x));
+      // actually take, drawn from where the finger would be on that line. The wedge is drawn on the ground for as
+      // long as the drag lasts and brightens while the finger asks for more turn than it gives.
+      const wanted = Math.atan2(-aim.dir.z, aim.dir.x);
+      const yaw = game.rotateCurrent(wanted);
       if (yaw === null) return;
+      const clamped = Math.abs(Math.atan2(Math.sin(wanted - yaw), Math.cos(wanted - yaw))) > 0.01;
       const dir = { x: Math.cos(yaw), z: -Math.sin(yaw) };
       const pos = game.current.car.position;
       const reach = Math.hypot(aim.current.x - pos.x, aim.current.z - pos.z);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(reach));
+      cue.showWedge(game.current.color, pos, game.restYaw, clamped);
       indicator.show(pos, dir, from, aim.power, aim.valid);
     },
     onFlick: (dir, power) => {
       indicator.hide();
+      cue.hideWedge();
+      haptic();
       game.flick(dir, power);
     },
   });
@@ -284,16 +294,19 @@ async function main(): Promise<void> {
     });
     const aimDir = (headingDeg: number) => {
       const pos = game.current!.car.position;
-      const yaw = game.clampYaw(tangentYaw(pos.x, pos.z) - (headingDeg * Math.PI) / 180);
-      return { yaw, dir: { x: Math.cos(yaw), z: -Math.sin(yaw) } };
+      const wanted = tangentYaw(pos.x, pos.z) - (headingDeg * Math.PI) / 180;
+      const yaw = game.clampYaw(wanted);
+      const clamped = Math.abs(Math.atan2(Math.sin(wanted - yaw), Math.cos(wanted - yaw))) > 0.01;
+      return { yaw, dir: { x: Math.cos(yaw), z: -Math.sin(yaw) }, clamped };
     };
     const aim = (headingDeg: number, power: number) => {
       if (!game.current || game.phase !== 'aim') return state();
-      const { yaw, dir } = aimDir(headingDeg);
+      const { yaw, dir, clamped } = aimDir(headingDeg);
       const pos = game.current.car.position;
       endFinger();
       game.rotateCurrent(yaw);
       const from = pos.clone().sub(new THREE.Vector3(dir.x, 0, dir.z).multiplyScalar(0.6 + 3 * power));
+      cue.showWedge(game.current.color, pos, game.restYaw, clamped);
       indicator.show(pos, dir, from, power, true);
       cue.hide();
       return state();
@@ -312,6 +325,7 @@ async function main(): Promise<void> {
         aim(headingDeg, power);
         const { dir } = aimDir(headingDeg);
         indicator.hide();
+        cue.hideWedge();
         game.flick(dir, power);
         return state();
       },

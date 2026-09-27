@@ -6,9 +6,10 @@ import { DRIVER_BY_ID, ROSTER, TIERS } from './roster.ts';
 import { driverCard, humanFace } from './kit.ts';
 import { portrait } from './portraits.ts';
 import { SetupScreen } from './setup.ts';
+import { canVibrate, getSetting, setSetting, type SettingKey } from './settings.ts';
 
-export type Screen = 'menu' | 'setup' | 'opponents' | 'settings' | 'race' | 'pause' | 'results';
-const SCREENS: Screen[] = ['menu', 'setup', 'opponents', 'settings', 'pause', 'results'];
+export type Screen = 'menu' | 'setup' | 'opponents' | 'settings' | 'howto' | 'race' | 'pause' | 'results';
+const SCREENS: Screen[] = ['menu', 'setup', 'opponents', 'settings', 'howto', 'pause', 'results'];
 
 export interface AppHooks {
   startRace(setups: PlayerSetup[], laps: number): void;
@@ -19,7 +20,6 @@ export interface AppHooks {
 }
 
 const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
-const SOUND_KEY = 'neppis.sound';
 const BEATEN_KEY = 'neppis.beaten';
 
 function loadBeaten(): Set<string> {
@@ -40,7 +40,8 @@ function face(p: Player): string {
 export class App {
   screen: Screen = 'menu';
   private lastGrid: { setups: PlayerSetup[]; laps: number } | null = null;
-  private settingsFrom: Screen = 'menu';
+  /** Where Settings and How to play return to: the menu or the pause card. */
+  private from: Screen = 'menu';
   private readonly setup: SetupScreen;
   private readonly beaten = loadBeaten();
   private readonly el = (id: string) => document.getElementById(id)!;
@@ -50,10 +51,12 @@ export class App {
     this.el('menuVersion').textContent = `v${__APP_VERSION__}`;
     this.el('menuRace').onclick = () => this.go('setup');
     this.el('menuOpponents').onclick = () => this.go('opponents');
-    this.el('menuSettings').onclick = () => this.openSettings('menu');
+    this.el('menuSettings').onclick = () => this.openFrom('settings', 'menu');
+    this.el('menuHowto').onclick = () => this.openFrom('howto', 'menu');
     this.el('pauseBtn').onclick = () => this.pause();
     this.el('pauseResume').onclick = () => this.resume();
-    this.el('pauseSettings').onclick = () => this.openSettings('pause');
+    this.el('pauseSettings').onclick = () => this.openFrom('settings', 'pause');
+    this.el('pauseHowto').onclick = () => this.openFrom('howto', 'pause');
     this.el('pauseQuit').onclick = () => this.confirmQuit(true);
     this.el('pauseKeep').onclick = () => this.confirmQuit(false);
     this.el('pauseQuitYes').onclick = () => this.quit();
@@ -62,31 +65,29 @@ export class App {
     this.el('resultsMenu').onclick = () => this.quit();
     for (const b of document.querySelectorAll<HTMLButtonElement>('.screen .back')) b.onclick = () => this.back();
     this.renderRoster();
-    const sound = this.el('soundSwitch');
-    sound.setAttribute('aria-checked', String(App.soundOn()));
-    sound.onclick = () => {
-      const on = sound.getAttribute('aria-checked') !== 'true';
-      sound.setAttribute('aria-checked', String(on));
-      try {
-        localStorage.setItem(SOUND_KEY, on ? '1' : '0');
-      } catch {
-        /* private mode */
-      }
+    for (const sw of document.querySelectorAll<HTMLButtonElement>('#settings .switch')) {
+      const key = sw.dataset.setting as SettingKey;
+      sw.setAttribute('aria-checked', String(getSetting(key)));
+      sw.onclick = () => {
+        const on = sw.getAttribute('aria-checked') !== 'true';
+        sw.setAttribute('aria-checked', String(on));
+        setSetting(key, on);
+      };
+    }
+    // A switch that cannot do anything is not shown: haptics only where the browser vibrates.
+    this.el('hapticsRow').hidden = !canVibrate();
+    const dots = this.el('howtoDots');
+    const strip = this.el('howtoStrip');
+    strip.onscroll = () => {
+      const page = Math.round(strip.scrollLeft / (strip.firstElementChild as HTMLElement).offsetWidth);
+      dots.querySelectorAll('i').forEach((d, i) => d.classList.toggle('is-on', i === page));
     };
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (this.screen === 'race') this.pause();
       else if (this.screen === 'pause') this.resume();
-      else if (this.screen === 'setup' || this.screen === 'settings' || this.screen === 'opponents') this.back();
+      else if (this.screen !== 'menu' && this.screen !== 'results') this.back();
     });
-  }
-
-  static soundOn(): boolean {
-    try {
-      return localStorage.getItem(SOUND_KEY) !== '0';
-    } catch {
-      return true;
-    }
   }
 
   /** Show one screen and hide the rest. The race "screen" is the bare HUD. */
@@ -195,13 +196,13 @@ export class App {
     this.go('menu');
   }
 
-  private openSettings(from: Screen): void {
-    this.settingsFrom = from;
-    this.go('settings');
+  private openFrom(screen: 'settings' | 'howto', from: Screen): void {
+    this.from = from;
+    this.go(screen);
   }
 
   private back(): void {
-    if (this.screen === 'settings') this.go(this.settingsFrom);
+    if (this.screen === 'settings' || this.screen === 'howto') this.go(this.from);
     else if (this.screen === 'setup' || this.screen === 'opponents') this.go('menu');
   }
 }

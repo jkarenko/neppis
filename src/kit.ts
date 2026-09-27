@@ -51,8 +51,8 @@ export function renderKit(root: HTMLElement): void {
   const c = PLAYER_COLORS.map(hex);
   const player = (name: string, color: string, stat: string, current = false, ai = false) =>
     `<div class="player${current ? ' current' : ''}" style="--c:${color}"><span class="dot" style="background:${color}"></span><span class="name">${name}${ai ? ' <span class="stat">(AI)</span>' : ''}</span><span class="stat">${stat}</span></div>`;
-  const chevrons = (left: number, color: string) =>
-    `<div class="chip" style="--c:${color}">${Array.from({ length: 3 }, (_, i) => `<svg viewBox="0 0 18 18" width="18" height="18"${i >= left ? ' class="used"' : ''}><path d="M4 6 L9 12 L14 6" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"${i >= left ? ' opacity="0.35"' : ''}/></svg>`).join('')}<span>Bea Line</span></div>`;
+  const chevrons = (left: number, color: string, name: string, d?: Driver) =>
+    `<div class="chip" style="--c:${color}">${d ? `<span class="portrait is-small" style="width:28px;height:28px;margin-left:-6px">${portrait(d.portrait)}</span>` : ''}${Array.from({ length: 3 }, (_, i) => `<svg viewBox="0 0 18 18" width="18" height="18"${i >= left ? ' class="used"' : ''}><path d="M4 6 L9 12 L14 6" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"${i >= left ? ' opacity="0.35"' : ''}/></svg>`).join('')}<span style="font-weight:600">${name}</span></div>`;
 
   root.innerHTML = `
     <h2>Colour</h2>
@@ -90,9 +90,7 @@ export function renderKit(root: HTMLElement): void {
 
     <h2>Chips and toasts</h2>
     <div class="strip">
-      ${chevrons(3, c[1])}${chevrons(1, c[0])}${chevrons(0, c[2])}
-      <span class="chip muted num">Power 70% · brisk</span>
-      <span class="chip num" style="color:var(--power-3)">Power 92% · risky</span>
+      ${chevrons(3, c[1], 'Bea Line', ROSTER[15])}${chevrons(1, c[0], 'Player 1')}${chevrons(0, c[2], 'Bruise Hammerton', ROSTER[14])}
     </div>
     <div class="strip" style="margin-top:12px">
       <span class="toast is-bad">${icon('flip')} Flip! Bea Line goes back to where the flick started.</span>

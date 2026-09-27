@@ -62,7 +62,7 @@
     <div id="hud">
       <div id="players"></div>
       <div id="turn" hidden></div>
-      <div id="message"></div>
+      <div id="message" class="toast"></div>
       <div id="finger" hidden>
         <div class="touch"></div>
         <div class="trail"></div>
@@ -80,6 +80,7 @@
         <div class="col">
           <button type="button" id="menuRace" class="btn btn-menu btn-primary"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4h11l-2 4 2 4H6"/></svg>Race</button>
           <button type="button" id="menuOpponents" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6"/></svg>Opponents</button>
+          <button type="button" id="menuHowto" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8h0M12 11v6M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>How to play</button>
           <button type="button" id="menuSettings" class="btn btn-menu"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM10.3 3.5h3.4l.5 2.3 1.9 1.1 2.2-.8 1.7 3-1.7 1.5v2.2l1.7 1.5-1.7 3-2.2-.8-1.9 1.1-.5 2.3h-3.4l-.5-2.3-1.9-1.1-2.2.8-1.7-3 1.7-1.5v-2.2L4 9.1l1.7-3 2.2.8 1.9-1.1z"/></svg>Settings</button>
         </div>
         <div class="menu-foot muted" id="menuVersion"></div>
@@ -89,8 +90,57 @@
       <div class="card screen-card">
         <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2></div>
         <div class="list">
-          <div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><span class="name">Sound</span><button type="button" id="soundSwitch" class="switch" role="switch" aria-checked="true" aria-label="Sound"></button></div>
+          <div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><span class="name">Sound</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Sound" data-setting="sound"></button></div>
+          <div class="row" id="hapticsRow"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12V5a1.5 1.5 0 0 1 3 0v6l1-1a1.5 1.5 0 0 1 2.5 1l1-.5a1.5 1.5 0 0 1 2 1.5v4c0 3-2 5-5 5h-2c-1.5 0-3-1-4-2.5L5 15a1.5 1.5 0 0 1 2.5-2z"/></svg><span class="name">Haptics <span class="hint">a short buzz on each flick</span></span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Haptics" data-setting="haptics"></button></div>
+          <div class="row"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><span class="name">Reduced motion <span class="hint">no pulses or fades</span></span><button type="button" class="switch" role="switch" aria-checked="false" aria-label="Reduced motion" data-setting="reducedMotion"></button></div>
         </div>
+      </div>
+    </div>
+    <div id="howto" class="screen" hidden>
+      <div class="card screen-card howto-card">
+        <div class="screen-head"><button type="button" class="btn btn-icon back" aria-label="Back"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>How to play</h2></div>
+        <div class="strip-scroll howto-strip" id="howtoStrip">
+          <section class="howto-page">
+            <div class="howto-art">
+              <svg viewBox="0 0 200 120" aria-hidden="true">
+                <ellipse cx="60" cy="56" rx="26" ry="26" fill="#ffffff" opacity="0.18"/>
+                <ellipse cx="60" cy="56" rx="22" ry="22" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+                <g transform="translate(60 56) rotate(-10)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="#e63946"/><rect x="-12" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="-12" y="8" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="8" width="7" height="3" fill="#1c1c1c"/><circle cx="2" cy="0" r="3" fill="#f1f1f1"/></g>
+                <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(60 56) rotate(-10)">
+                  <path d="M-30 -5 L-24 0 L-30 5" stroke="#22c55e"/><path d="M-42 -5 L-36 0 L-42 5" stroke="#22c55e"/><path d="M-54 -5 L-48 0 L-54 5" stroke="#eab308"/><path d="M-66 -5 L-60 0 L-66 5" stroke="#eab308"/><path d="M-78 -5 L-72 0 L-78 5" stroke="#ef4444"/>
+                </g>
+                <path transform="translate(150 70) scale(1.1)" d="M-6 6 V-12 a4 4 0 0 1 8 0 v14 l2-1 a3.5 3.5 0 0 1 5 2 l1.5-0.5 a3.5 3.5 0 0 1 5 2.5 l1.5-0.3 a3 3 0 0 1 3.5 3 v9 c0 6-4 11-11 11 h-5 c-4 0-7-2-9-5 l-7-10 a3.5 3.5 0 0 1 5.5-4.5 z" fill="#fff" stroke="#1d2430" stroke-width="2.2" stroke-linejoin="round"/>
+                <path d="M100 62 L134 68" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 5" opacity="0.7"/>
+              </svg>
+            </div>
+            <h3>Drag back, let go</h3>
+            <p>Pull away from the car like a catapult and release. The further you pull the harder it goes: blue is gentle, green safe, yellow brisk, red risky.</p>
+          </section>
+          <section class="howto-page">
+            <div class="howto-art">
+              <svg viewBox="0 0 200 120" aria-hidden="true">
+                <path d="M60 60 L172 20 A118 118 0 0 1 172 100 Z" fill="#2a6fdb" opacity="0.22"/>
+                <path d="M172 20 L60 60 L172 100" fill="none" stroke="#2a6fdb" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M60 60 L180 60" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 5" opacity="0.6"/>
+                <g transform="translate(60 60)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="#2a6fdb"/><rect x="-12" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="-11" width="7" height="3" fill="#1c1c1c"/><rect x="-12" y="8" width="7" height="3" fill="#1c1c1c"/><rect x="5" y="8" width="7" height="3" fill="#1c1c1c"/><circle cx="2" cy="0" r="3" fill="#f1f1f1"/></g>
+                <g transform="translate(14 96)" fill="none" stroke="#2a6fdb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0 L5 6 L10 0"/><path d="M16 0 L21 6 L26 0"/><path d="M32 0 L37 6 L42 0" opacity="0.35"/></g>
+                <text x="150" y="112" fill="#cfc9bd" font-size="11" text-anchor="middle">45° each way</text>
+              </svg>
+            </div>
+            <h3>Three flicks a turn</h3>
+            <p>Each turn is three flicks, the leader first. A flick can turn the nose at most 45° either way, so end a flick pointing where the next one should go.</p>
+          </section>
+          <section class="howto-page">
+            <div class="howto-art howto-list">
+              <div class="toast is-bad"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16l-3 5H7zM4 9l1.5-2.5h13L20 9M7.5 6.5v-2.5M16.5 6.5v-2.5M4 19.5h16"/></svg><span><b>Flip</b> · back to where the flick started</span></div>
+              <div class="toast is-warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3.5v13l-4.5-2.5v-8zM14.5 3.5l2.5 1.3v10.4l-2.5 1.3M17 6.5h2.5M17 13.5h2.5M4 19.5h16"/></svg><span><b>Tip</b> · halfway along the flick</span></div>
+              <div class="toast is-warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M18 3v18M10.5 9.5a1.5 1.5 0 1 1 3 0c0 1-1.5 1.3-1.5 3M12 16h0"/></svg><span><b>Off track</b> · back to the last point on it</span></div>
+            </div>
+            <h3>Keep the rubber side down</h3>
+            <p>A car on its roof, on its side or off the track is put back and the flick is spent. Being knocked over by a rival costs nothing: you are righted where you lie.</p>
+          </section>
+        </div>
+        <div class="howto-dots" id="howtoDots"><i class="is-on"></i><i></i><i></i></div>
       </div>
     </div>
     <div id="pause" class="screen" hidden>
@@ -99,6 +149,7 @@
         <div class="col" id="pauseMain">
           <button type="button" id="pauseResume" class="btn btn-primary btn-block">Resume</button>
           <button type="button" id="pauseSettings" class="btn btn-block">Settings</button>
+          <button type="button" id="pauseHowto" class="btn btn-block">How to play</button>
           <button type="button" id="pauseQuit" class="btn btn-block btn-danger">Quit to menu</button>
         </div>
         <div class="col" id="pauseConfirm" hidden>

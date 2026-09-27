@@ -84,7 +84,7 @@ export const PRESETS: Record<string, Partial<Scenario>> = {
   /** Turned around on the straight: nose pointing back the way it came. */
   reversed: { players: [human(pose(0.15, 0, 180))] },
   /** A rival parked one car length ahead. */
-  rival: { players: [human(pose(0.12, 0, 0)), rival(pose(0.12, 0.2, 0, 1.0))] },
+  rival: { players: [human(pose(0.12, 0, 0)), roster('gene-lazy', pose(0.12, 0.2, 0, 1.0))] },
   /** Three car lengths before the jump. */
   jump: { players: [human(pose(0.57, 0, 0, -2.4))] },
   /** One flick from the finish line with a roster driver behind: a flick over the line ends the race and shows
